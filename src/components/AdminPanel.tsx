@@ -572,6 +572,11 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
                 Trabalhos Atribuídos 
                 <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-sm">{assignedWorks.length}</span>
               </h2>
+              <div className="mb-4 print:mb-2 p-3 border border-slate-300 rounded-lg bg-slate-50 print:bg-transparent text-xs leading-relaxed">
+                <p className="font-bold mb-1">Como avaliar</p>
+                <p>Avalie cada trabalho de 0 a 10 considerando: apresentação visual, mérito científico, metodologia, clareza dos resultados e defesa oral. Use comentários construtivos quando necessário.</p>
+                <p className="mt-1 font-semibold">Se houver algum problema com a plataforma, use esta página como ficha de avaliação: preencha a nota de cada trabalho e entregue-a à organização.</p>
+              </div>
               {assignedWorks.length === 0 ? (
                 <p className="text-slate-500 italic">Nenhum trabalho atribuído no momento.</p>
               ) : (
@@ -582,6 +587,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
                       <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">Tipo / Área</th>
                       <th className="border border-slate-300 p-1.5 text-left">Título</th>
                       <th className="border border-slate-300 p-1.5 text-left min-w-[140px]">Apresentador</th>
+                      <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">Nota (0–10)</th>
                       <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">Horário</th>
                     </tr>
                   </thead>
@@ -595,6 +601,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
                         </td>
                         <td className="border border-slate-300 p-1.5 font-medium text-slate-900">{w.title}</td>
                         <td className="border border-slate-300 p-1.5 text-slate-600">{w.presenterName}</td>
+                        <td className="border border-slate-300 p-1.5 h-8 min-w-[70px]">&nbsp;</td>
                         <td className="border border-slate-300 p-1.5 text-slate-600 whitespace-nowrap">
                           {w.type === 'oral' && w.presentationDate ? w.presentationDate : ''}
                           {w.type === 'oral' && w.presentationDate && w.presentationTime ? <br/> : ''}
