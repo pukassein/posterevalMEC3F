@@ -523,6 +523,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
               .page-break { page-break-after: always; }
               .print-guide { break-inside: avoid; }
               tr { break-inside: avoid; }
+              .print-page-number::after { content: "Página " counter(page) " / " counter(pages); }
             }
           `}
         </style>
@@ -590,6 +591,14 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
                       <h3 className="text-lg print:text-sm font-bold mb-2 print:mb-1">{group.label} ({group.works.length})</h3>
                       <table className="w-full border-collapse border border-slate-300 text-xs">
                         <thead>
+                          <tr>
+                            <th colSpan={6} className="border border-slate-300 p-2 text-left">
+                              <div className="flex justify-between items-center">
+                                <span>{ev.name} — Código: {ev.accessCode}</span>
+                                <span className="print-page-number" />
+                              </div>
+                            </th>
+                          </tr>
                           <tr className="bg-slate-50">
                             <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">ID</th>
                             <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">Tipo / Área</th>
