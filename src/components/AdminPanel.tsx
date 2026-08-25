@@ -35,6 +35,8 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const [searchEvaluators, setSearchEvaluators] = useState('');
   const [searchAssignmentEvaluators, setSearchAssignmentEvaluators] = useState('');
   const [isImportingAssignments, setIsImportingAssignments] = useState(false);
+  const [assignmentEditorId, setAssignmentEditorId] = useState<string | null>(null);
+  const [assignmentCodes, setAssignmentCodes] = useState('');
   const [resultsTematicaFilter, setResultsTematicaFilter] = useState<Tematica | 'ALL'>('ALL');
   const [resultsTypeFilter, setResultsTypeFilter] = useState<'ALL' | 'oral' | 'poster'>('ALL');
 
@@ -234,8 +236,9 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
       let importedAssignments = 0;
 
       rows.slice(1).forEach(row => {
-        const codes = String(row[0] || '').split(',').map(code => code.trim()).filter(Boolean);
-        const name = String(row[1] || '').trim();
+        const hasSeparateCodeColumn = String(row[1] || '').trim().length > 0;
+        const codes = hasSeparateCodeColumn ? String(row[0] || '').split(',').map(code => code.trim()).filter(Boolean) : [];
+        const name = String(hasSeparateCodeColumn ? row[1] : row[0] || '').trim();
         if (!name) return;
         const key = name.toLocaleLowerCase();
         let evaluator = evaluatorsByName.get(key);
@@ -267,6 +270,30 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
     } finally {
       setIsImportingAssignments(false);
     }
+  };
+
+  const handleAssignPastedCodes = (evaluatorId: string) => {
+    const posterMap = new Map(localWorks.map(work => [normalizePosterCode(work.posterId), work.id]));
+    const codes = assignmentCodes.split(/[\s,;]+/).map(code => code.trim()).filter(Boolean);
+    const nextAssignments = { ...localAssignments, [evaluatorId]: [...(localAssignments[evaluatorId] || [])] };
+    const assigned = new Set(nextAssignments[evaluatorId]);
+    const unmatched: string[] = [];
+    codes.forEach(code => {
+      const workId = posterMap.get(normalizePosterCode(code));
+      if (workId) assigned.add(workId); else unmatched.push(code);
+    });
+    nextAssignments[evaluatorId] = Array.from(assigned);
+    setLocalAssignments(nextAssignments);
+    setAssignmentCodes('');
+    setAssignmentEditorId(null);
+    if (unmatched.length) alert(`Não encontrados: ${unmatched.join(', ')}`);
+  };
+
+  const handleResetEvaluators = () => {
+    if (!confirm('Isso excluirá todos os avaliadores e todas as atribuições. Trabalhos e avaliações serão mantidos. Continuar?')) return;
+    setLocalEvaluators([]);
+    setLocalAssignments({});
+    setAssignmentEditorId(null);
   };
 
   const sortedWorks = [...localWorks].sort((a, b) => a.posterId.localeCompare(b.posterId));
@@ -1075,13 +1102,21 @@ return (
                     Gerenciar Avaliadores
                   </h2>
                   {localEvaluators.length > 0 && (
-                    <button
-                      onClick={() => handlePrintEvaluators(filteredEvaluators)}
-                      className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition font-bold text-sm ml-auto"
-                    >
-                      <Printer className="w-4 h-4" />
-                      Imprimir Todos
-                    </button>
+                    <div className="flex gap-2 ml-auto">
+                      <button
+                        onClick={handleResetEvaluators}
+                        className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition font-bold text-sm"
+                      >
+                        Limpar Avaliadores
+                      </button>
+                      <button
+                        onClick={() => handlePrintEvaluators(filteredEvaluators)}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition font-bold text-sm"
+                      >
+                        <Printer className="w-4 h-4" />
+                        Imprimir Todos
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -1222,6 +1257,13 @@ return (
                           </>
                         ) : (
                           <>
+                            <button
+                              onClick={() => { setAssignmentEditorId(assignmentEditorId === ev.id ? null : ev.id); setAssignmentCodes(''); }}
+                              className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 p-2 rounded-lg transition-colors flex items-center justify-center"
+                              title="Atribuir trabalhos por código"
+                            >
+                              <Tag className="w-5 h-5" />
+                            </button>
                             <button 
                               onClick={() => handlePrintEvaluators([ev])}
                               className="text-slate-500 hover:text-slate-900 hover:bg-slate-200 p-2 rounded-lg transition-colors flex items-center justify-center"
@@ -1246,6 +1288,25 @@ return (
                           </>
                         )}
                       </div>
+
+                      {assignmentEditorId === ev.id && editingEvaluatorId !== ev.id && (
+                        <div className="w-full sm:w-80 flex flex-col gap-2 sm:order-3">
+                          <textarea
+                            value={assignmentCodes}
+                            onChange={(e) => setAssignmentCodes(e.target.value)}
+                            placeholder="Cole os códigos: ENS-092, ENS-081, SMA-025"
+                            rows={3}
+                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none text-slate-900 resize-none"
+                          />
+                          <button
+                            onClick={() => handleAssignPastedCodes(ev.id)}
+                            disabled={!assignmentCodes.trim()}
+                            className="bg-teal-600 disabled:bg-slate-300 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-teal-700"
+                          >
+                            Atribuir códigos
+                          </button>
+                        </div>
+                      )}
 
                     </div>
                   ))
