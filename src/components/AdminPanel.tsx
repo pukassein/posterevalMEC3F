@@ -546,13 +546,17 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
             if (timeA !== timeB) return timeA.localeCompare(timeB);
             return a.posterId.localeCompare(b.posterId);
           });
+
+          const workGroups = [
+            { label: 'Pôsteres', works: assignedWorks.filter(w => w.type === 'poster') },
+            { label: 'Comunicação Oral', works: assignedWorks.filter(w => w.type === 'oral') },
+          ].filter(group => group.works.length > 0);
             
           return (
             <div key={ev.id} className={`print-guide ${index < printEvaluatorsList.length - 1 ? 'page-break mb-12 pb-12 border-b-2 border-slate-200 print:border-none print:mb-0 print:pb-0' : ''}`}>
               <div className="flex justify-between items-center mb-4 print:mb-2">
                 <h1 className="text-3xl print:text-xl font-bold">Guia do Avaliador</h1>
-                {/* Fallback to hide image if /logo.png doesn't exist yet */}
-                <img src="/logo.png" alt="Logo do Evento" className="h-12 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                <img src="https://www.mec3f.com/logomec3f.png" alt="Logo MEC3F" className="h-12 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               </div>
               <div className="mb-8 p-6 print:mb-3 print:p-3 border-2 border-slate-900 rounded-xl bg-slate-50 print:bg-transparent flex justify-between items-center gap-4">
                 <div>
@@ -580,37 +584,44 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
               {assignedWorks.length === 0 ? (
                 <p className="text-slate-500 italic">Nenhum trabalho atribuído no momento.</p>
               ) : (
-                <table className="w-full border-collapse border border-slate-300 text-xs">
-                  <thead>
-                    <tr className="bg-slate-50">
-                      <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">ID</th>
-                      <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">Tipo / Área</th>
-                      <th className="border border-slate-300 p-1.5 text-left">Título</th>
-                      <th className="border border-slate-300 p-1.5 text-left min-w-[140px]">Apresentador</th>
-                      <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">Nota (0–10)</th>
-                      <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">Horário</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {assignedWorks.map(w => (
-                      <tr key={w.id}>
-                        <td className="border border-slate-300 p-1.5 font-mono font-bold text-slate-700 whitespace-nowrap">{w.posterId}</td>
-                        <td className="border border-slate-300 p-1.5 whitespace-nowrap">
-                          <span className="font-bold uppercase text-xs text-slate-900">{w.type}</span><br/>
-                          <span className="text-xs text-slate-500">{w.tematica}</span>
-                        </td>
-                        <td className="border border-slate-300 p-1.5 font-medium text-slate-900">{w.title}</td>
-                        <td className="border border-slate-300 p-1.5 text-slate-600">{w.presenterName}</td>
-                        <td className="border border-slate-300 p-1.5 h-8 min-w-[70px]">&nbsp;</td>
-                        <td className="border border-slate-300 p-1.5 text-slate-600 whitespace-nowrap">
-                          {w.type === 'oral' && w.presentationDate ? w.presentationDate : ''}
-                          {w.type === 'oral' && w.presentationDate && w.presentationTime ? <br/> : ''}
-                          {w.presentationTime || '-'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="space-y-5 print:space-y-3">
+                  {workGroups.map(group => (
+                    <section key={group.label}>
+                      <h3 className="text-lg print:text-sm font-bold mb-2 print:mb-1">{group.label} ({group.works.length})</h3>
+                      <table className="w-full border-collapse border border-slate-300 text-xs">
+                        <thead>
+                          <tr className="bg-slate-50">
+                            <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">ID</th>
+                            <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">Tipo / Área</th>
+                            <th className="border border-slate-300 p-1.5 text-left">Título</th>
+                            <th className="border border-slate-300 p-1.5 text-left min-w-[140px]">Apresentador</th>
+                            <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">Nota (0–10)</th>
+                            <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">Horário</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.works.map(w => (
+                            <tr key={w.id}>
+                              <td className="border border-slate-300 p-1.5 font-mono font-bold text-slate-700 whitespace-nowrap">{w.posterId}</td>
+                              <td className="border border-slate-300 p-1.5 whitespace-nowrap">
+                                <span className="font-bold uppercase text-xs text-slate-900">{w.type}</span><br/>
+                                <span className="text-xs text-slate-500">{w.tematica}</span>
+                              </td>
+                              <td className="border border-slate-300 p-1.5 font-medium text-slate-900">{w.title}</td>
+                              <td className="border border-slate-300 p-1.5 text-slate-600">{w.presenterName}</td>
+                              <td className="border border-slate-300 p-1.5 h-8 min-w-[70px]">&nbsp;</td>
+                              <td className="border border-slate-300 p-1.5 text-slate-600 whitespace-nowrap">
+                                {w.type === 'oral' && w.presentationDate ? w.presentationDate : ''}
+                                {w.type === 'oral' && w.presentationDate && w.presentationTime ? <br/> : ''}
+                                {w.presentationTime || '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </section>
+                  ))}
+                </div>
               )}
             </div>
           );
