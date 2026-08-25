@@ -1226,7 +1226,7 @@ return (
                             <div className="flex items-center gap-2 flex-wrap">
                               <div className="font-bold text-slate-900">{ev.name}</div>
                               <span className="text-xs font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded-md">
-                                {Object.values(localAssignments).filter((workIds: string[]) => workIds.includes(ev.id)).length} trabalho(s) atribuído(s)
+                                {(localAssignments[ev.id] || []).length} trabalho(s) atribuído(s)
                               </span>
                             </div>
                             <div className="text-xs font-mono text-slate-500 mt-0.5">Código de Acesso: {ev.accessCode}</div>
