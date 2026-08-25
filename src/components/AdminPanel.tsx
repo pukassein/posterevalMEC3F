@@ -404,7 +404,9 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
 
   const renderWorkCardWithAssign = (work: Poster) => {
     const isExpanded = expandedWorkId === work.id;
-    const assignedEvaluatorIds = Object.keys(localAssignments).filter(evId => (localAssignments[evId] || []).includes(work.id));
+    const assignedEvaluatorIds = Object.keys(localAssignments).filter(evId => (localAssignments[evId] || []).some(assignment =>
+      assignment === work.id || normalizePosterCode(assignment) === normalizePosterCode(work.posterId)
+    ));
     
     // Determine card color based on tematica
     const getTematicaColor = (t?: Tematica) => {
