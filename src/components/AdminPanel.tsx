@@ -493,7 +493,10 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
                   .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
                   .map(ev => {
                   const isAssigned = (localAssignments[ev.id] || []).some(assignment =>
-                    assignment === work.id || normalizePosterCode(assignment) === normalizePosterCode(work.posterId)
+                    assignment === work.id || (() => {
+                      const assignedWork = localWorks.find(item => item.id === assignment);
+                      return normalizePosterCode(assignedWork?.posterId || assignment) === normalizePosterCode(work.posterId);
+                    })()
                   );
                   const isMatch = ev.areas?.includes(work.tematica as Tematica);
                   return (
