@@ -20,7 +20,10 @@ export function Dashboard({ posters, evaluations, evaluator, assignments, onSele
     return match ? `${match[1]}${match[2].padStart(3, '0')}` : value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   };
   const assignedPosters = posters.filter(poster => assignments.some(assignment =>
-    assignment === poster.id || normalizePosterCode(assignment) === normalizePosterCode(poster.posterId)
+    assignment === poster.id || (() => {
+      const assignedPoster = posters.find(item => item.id === assignment);
+      return normalizePosterCode(assignedPoster?.posterId || assignment) === normalizePosterCode(poster.posterId);
+    })()
   ));
 
   const filteredPosters = assignedPosters.filter(poster => {

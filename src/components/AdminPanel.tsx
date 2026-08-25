@@ -334,7 +334,10 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const getAssignedEvaluatorCount = (workId: string) => {
     const work = localWorks.find(item => item.id === workId);
     return Object.keys(localAssignments).filter(evId => (localAssignments[evId] || []).some(assignment =>
-      assignment === workId || (work && normalizePosterCode(assignment) === normalizePosterCode(work.posterId))
+      assignment === workId || (work && (() => {
+        const assignedWork = localWorks.find(item => item.id === assignment);
+        return normalizePosterCode(assignedWork?.posterId || assignment) === normalizePosterCode(work.posterId);
+      })())
     )).length;
   };
 
@@ -405,7 +408,10 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const renderWorkCardWithAssign = (work: Poster) => {
     const isExpanded = expandedWorkId === work.id;
     const assignedEvaluatorIds = Object.keys(localAssignments).filter(evId => (localAssignments[evId] || []).some(assignment =>
-      assignment === work.id || normalizePosterCode(assignment) === normalizePosterCode(work.posterId)
+      assignment === work.id || (() => {
+        const assignedWork = localWorks.find(item => item.id === assignment);
+        return normalizePosterCode(assignedWork?.posterId || assignment) === normalizePosterCode(work.posterId);
+      })()
     ));
     
     // Determine card color based on tematica
