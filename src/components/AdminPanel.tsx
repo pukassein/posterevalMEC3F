@@ -32,6 +32,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const [searchPoster, setSearchPoster] = useState('');
   const [searchAssignments, setSearchAssignments] = useState('');
   const [searchEvaluators, setSearchEvaluators] = useState('');
+  const [searchAssignmentEvaluators, setSearchAssignmentEvaluators] = useState('');
   const [resultsTematicaFilter, setResultsTematicaFilter] = useState<Tematica | 'ALL'>('ALL');
   const [resultsTypeFilter, setResultsTypeFilter] = useState<'ALL' | 'oral' | 'poster'>('ALL');
 
@@ -357,8 +358,22 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
             {localEvaluators.length === 0 ? (
               <p className="text-xs text-slate-500 italic">Nenhum avaliador cadastrado.</p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {localEvaluators.map(ev => {
+              <>
+                <div className="relative w-full sm:max-w-xs">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchAssignmentEvaluators}
+                    onChange={(e) => setSearchAssignmentEvaluators(e.target.value)}
+                    placeholder="Buscar avaliador..."
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                {localEvaluators
+                  .filter(ev => !searchAssignmentEvaluators.trim() || ev.name.toLocaleLowerCase().includes(searchAssignmentEvaluators.toLocaleLowerCase()))
+                  .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
+                  .map(ev => {
                   const isAssigned = (localAssignments[ev.id] || []).includes(work.id);
                   const isMatch = ev.areas?.includes(work.tematica as Tematica);
                   return (
@@ -378,8 +393,9 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
                       {ev.name} {isMatch && !isAssigned && <span className="ml-1 text-[10px] text-amber-700 opacity-80">(Recomendado)</span>}
                     </button>
                   );
-                })}
-              </div>
+                  })}
+                </div>
+              </>
             )}
           </div>
         )}
