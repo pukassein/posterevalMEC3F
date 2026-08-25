@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public."Eval_posters" (
     "type" TEXT NOT NULL,
     "abstract" TEXT,
     "presentationTime" TEXT,
+    "presentationDate" TEXT,
     "tematica" TEXT,
     "created_at" TIMESTAMPTZ DEFAULT NOW()
 );
@@ -76,6 +77,10 @@ CREATE TABLE IF NOT EXISTS public."Eval_evaluators" (
     "accessCode" TEXT UNIQUE NOT NULL,
     "created_at" TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Safe upgrades for databases created before these fields were added
+ALTER TABLE public."Eval_posters" ADD COLUMN IF NOT EXISTS "presentationDate" TEXT;
+ALTER TABLE public."Eval_evaluators" ADD COLUMN IF NOT EXISTS "areas" TEXT[] DEFAULT '{}';
 
 -- Enable Row Level Security
 ALTER TABLE public."Eval_evaluators" ENABLE ROW LEVEL SECURITY;

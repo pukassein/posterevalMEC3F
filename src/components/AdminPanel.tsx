@@ -804,7 +804,7 @@ return (
                 className="px-4 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white text-slate-600"
               >
                 <option value="ALL">Qualquer nº de Avaliadores</option>
-                <option value="0">0 Avaliadores</option>
+                <option value="0">Sem avaliadores</option>
                 <option value="1">1 Avaliador</option>
                 <option value="2">2 Avaliadores</option>
                 <option value="3+">3 ou mais Avaliadores</option>
@@ -884,7 +884,7 @@ return (
                 className="px-4 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white text-slate-600"
               >
                 <option value="ALL">Qualquer nº de Avaliadores</option>
-                <option value="0">0 Avaliadores</option>
+                <option value="0">Sem avaliadores</option>
                 <option value="1">1 Avaliador</option>
                 <option value="2">2 Avaliadores</option>
                 <option value="3+">3 ou mais Avaliadores</option>
@@ -1182,7 +1182,12 @@ return (
                             {ev.accessCode}
                           </div>
                           <div>
-                            <div className="font-bold text-slate-900">{ev.name}</div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="font-bold text-slate-900">{ev.name}</div>
+                              <span className="text-xs font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded-md">
+                                {Object.values(localAssignments).filter((workIds: string[]) => workIds.includes(ev.id)).length} trabalho(s) atribuído(s)
+                              </span>
+                            </div>
                             <div className="text-xs font-mono text-slate-500 mt-0.5">Código de Acesso: {ev.accessCode}</div>
                             {ev.areas && ev.areas.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-2">
