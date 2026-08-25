@@ -31,6 +31,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const [searchOral, setSearchOral] = useState('');
   const [searchPoster, setSearchPoster] = useState('');
   const [searchAssignments, setSearchAssignments] = useState('');
+  const [searchEvaluators, setSearchEvaluators] = useState('');
   const [resultsTematicaFilter, setResultsTematicaFilter] = useState<Tematica | 'ALL'>('ALL');
   const [resultsTypeFilter, setResultsTypeFilter] = useState<'ALL' | 'oral' | 'poster'>('ALL');
 
@@ -209,6 +210,10 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   };
 
   const sortedWorks = [...localWorks].sort((a, b) => a.posterId.localeCompare(b.posterId));
+
+  const filteredEvaluators = [...localEvaluators]
+    .filter(ev => !searchEvaluators.trim() || ev.name.toLocaleLowerCase().includes(searchEvaluators.toLocaleLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }));
 
   const presentationDates = useMemo(() => {
     const dates = new Set<string>();
@@ -990,7 +995,7 @@ return (
                   </h2>
                   {localEvaluators.length > 0 && (
                     <button
-                      onClick={() => handlePrintEvaluators(localEvaluators)}
+                      onClick={() => handlePrintEvaluators(filteredEvaluators)}
                       className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition font-bold text-sm ml-auto"
                     >
                       <Printer className="w-4 h-4" />
@@ -1042,11 +1047,24 @@ return (
                 </div>
               </form>
 
+              <div className="relative mb-5 max-w-2xl">
+                <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchEvaluators}
+                  onChange={(e) => setSearchEvaluators(e.target.value)}
+                  placeholder="Buscar avaliador por nome..."
+                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-slate-900 transition-colors"
+                />
+              </div>
+
               <div className="space-y-3">
                 {localEvaluators.length === 0 ? (
                   <p className="text-slate-500 text-sm italic">Nenhum avaliador cadastrado. Crie um acima.</p>
+                ) : filteredEvaluators.length === 0 ? (
+                  <p className="text-slate-500 text-sm italic">Nenhum avaliador encontrado.</p>
                 ) : (
-                  localEvaluators.map(ev => (
+                  filteredEvaluators.map(ev => (
                     <div key={ev.id} className="flex flex-col sm:flex-row sm:items-start justify-between p-4 border border-slate-200 rounded-xl bg-slate-50 gap-4">
                       {editingEvaluatorId === ev.id ? (
                         <div className="flex-1 flex flex-col gap-3">
