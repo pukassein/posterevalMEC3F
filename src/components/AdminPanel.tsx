@@ -14,10 +14,11 @@ interface AdminPanelProps {
   onSaveCriteria: (criteria: Criterion[]) => void;
   onSavePosters: (posters: Poster[]) => void;
   onSaveEvaluators: (evaluators: Evaluator[]) => void;
+  onClearEvaluation: (posterId: string) => void;
   onLogout: () => void;
 }
 
-export function AdminPanel({ posters, assignments, evaluations, criteria, evaluators = [], onSaveAssignments, onSaveCriteria, onSavePosters, onSaveEvaluators, onLogout }: AdminPanelProps) {
+export function AdminPanel({ posters, assignments, evaluations, criteria, evaluators = [], onSaveAssignments, onSaveCriteria, onSavePosters, onSaveEvaluators, onClearEvaluation, onLogout }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<'results' | 'evaluators' | 'assignments' | 'criteria' | 'oral' | 'posters'>('oral');
   const [activeTematicaOral, setActiveTematicaOral] = useState<Tematica | 'ALL'>('ALL');
   const [activeTematicaPoster, setActiveTematicaPoster] = useState<Tematica | 'ALL'>('ALL');
@@ -758,7 +759,8 @@ return (
                     <th className="p-4 w-32">Tipo / Área</th>
                     <th className="p-4">Título & Apresentador</th>
                     <th className="p-4 w-32 text-center">Avaliações</th>
-                    <th className="p-4 rounded-tr-xl w-32 text-right">Nota Média</th>
+                    <th className="p-4 w-32 text-right">Nota Média</th>
+                    <th className="p-4 rounded-tr-xl w-32 text-right">Ação</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -797,6 +799,16 @@ return (
                           </div>
                         ) : (
                           <span className="text-sm text-slate-400 italic">Pendente</span>
+                        )}
+                      </td>
+                      <td className="p-4 text-right">
+                        {stat.evalCount > 0 && (
+                          <button
+                            onClick={() => onClearEvaluation(stat.id)}
+                            className="text-xs font-bold text-red-600 hover:text-red-800 hover:underline"
+                          >
+                            Limpar avaliação
+                          </button>
                         )}
                       </td>
                     </tr>

@@ -135,6 +135,20 @@ export default function App() {
     setSelectedPoster(null);
   };
 
+  const handleClearEvaluation = async (posterId: string) => {
+    const work = posters.find(poster => poster.id === posterId);
+    if (!confirm(`Limpar a avaliação de ${work?.posterId || 'este trabalho'}? O trabalho ficará pendente novamente.`)) return;
+
+    const updatedEvaluations = evaluations.filter(evaluation => evaluation.posterId !== posterId);
+    setEvaluations(updatedEvaluations);
+    localStorage.setItem('poster_eval_evaluations', JSON.stringify(updatedEvaluations));
+
+    if (supabase) {
+      const { error } = await supabase.from('Eval_evaluations').delete().eq('posterId', posterId);
+      if (error) alert('Supabase Error (Evaluation): ' + error.message);
+    }
+  };
+
   const handleBackToDashboard = () => {
     setView('dashboard');
     setSelectedPoster(null);
@@ -207,6 +221,7 @@ export default function App() {
           evaluators={evaluators}
           onSavePosters={handleSavePosters}
           onSaveEvaluators={handleSaveEvaluators}
+          onClearEvaluation={handleClearEvaluation}
           onLogout={handleLogout}
         />
       )}
