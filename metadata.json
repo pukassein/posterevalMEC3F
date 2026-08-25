@@ -1,0 +1,6 @@
+{
+  "name": "PosterEval",
+  "description": "Academic poster grading and evaluation application for conference events.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
