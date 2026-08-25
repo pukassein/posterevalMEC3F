@@ -514,13 +514,15 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   
   if (printEvaluatorsList) {
     return (
-      <div className="bg-white text-black p-8 min-h-screen w-full">
+      <div className="bg-white text-black p-8 print:p-2 min-h-screen w-full">
         <style>
           {`
             @media print {
-              @page { margin: 2cm; }
+              @page { margin: 1cm; }
               body { background: white; }
               .page-break { page-break-after: always; }
+              .print-guide { break-inside: avoid; }
+              tr { break-inside: avoid; }
             }
           `}
         </style>
@@ -546,54 +548,54 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
           });
             
           return (
-            <div key={ev.id} className={index < printEvaluatorsList.length - 1 ? 'page-break mb-12 pb-12 border-b-2 border-slate-200 print:border-none' : ''}>
-              <div className="flex justify-between items-center mb-4">
-                <h1 className="text-3xl font-bold">Guia do Avaliador</h1>
+            <div key={ev.id} className={`print-guide ${index < printEvaluatorsList.length - 1 ? 'page-break mb-12 pb-12 border-b-2 border-slate-200 print:border-none print:mb-0 print:pb-0' : ''}`}>
+              <div className="flex justify-between items-center mb-4 print:mb-2">
+                <h1 className="text-3xl print:text-xl font-bold">Guia do Avaliador</h1>
                 {/* Fallback to hide image if /logo.png doesn't exist yet */}
                 <img src="/logo.png" alt="Logo do Evento" className="h-12 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               </div>
-              <div className="mb-8 p-6 border-2 border-slate-900 rounded-xl bg-slate-50 print:bg-transparent flex justify-between items-center gap-4">
+              <div className="mb-8 p-6 print:mb-3 print:p-3 border-2 border-slate-900 rounded-xl bg-slate-50 print:bg-transparent flex justify-between items-center gap-4">
                 <div>
-                  <p className="text-2xl font-bold mb-2">{ev.name}</p>
-                  <div className="flex flex-wrap gap-4 items-center mb-2">
-                    <p className="text-lg">Código de Acesso: <span className="font-mono bg-slate-200 px-2 py-1 rounded text-slate-900">{ev.accessCode}</span></p>
+                    <p className="text-2xl print:text-lg font-bold mb-2 print:mb-1">{ev.name}</p>
+                  <div className="flex flex-wrap gap-4 print:gap-2 items-center mb-2 print:mb-1">
+                    <p className="text-lg print:text-sm">Código de Acesso: <span className="font-mono bg-slate-200 px-2 py-1 print:px-1 print:py-0 rounded text-slate-900">{ev.accessCode}</span></p>
                     {ev.areas && ev.areas.length > 0 && <p className="text-slate-600">Áreas: {ev.areas.join(', ')}</p>}
                   </div>
                   <p className="text-sm text-slate-500">Acesse o sistema em: <strong className="text-slate-900">{window.location.origin}</strong></p>
                 </div>
-                <div className="flex-shrink-0 bg-white p-2 border border-slate-200 rounded-lg">
-                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(window.location.origin)}`} alt="QR Code" className="w-20 h-20" />
+                <div className="flex-shrink-0 bg-white p-2 print:p-1 border border-slate-200 rounded-lg">
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(window.location.origin)}`} alt="QR Code" className="w-20 h-20 print:w-14 print:h-14" />
                 </div>
               </div>
               
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <h2 className="text-xl print:text-base font-bold mb-4 print:mb-2 flex items-center gap-2">
                 Trabalhos Atribuídos 
                 <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-sm">{assignedWorks.length}</span>
               </h2>
               {assignedWorks.length === 0 ? (
                 <p className="text-slate-500 italic">Nenhum trabalho atribuído no momento.</p>
               ) : (
-                <table className="w-full border-collapse border border-slate-300 text-sm">
+                <table className="w-full border-collapse border border-slate-300 text-xs">
                   <thead>
                     <tr className="bg-slate-50">
-                      <th className="border border-slate-300 p-3 text-left whitespace-nowrap">ID</th>
-                      <th className="border border-slate-300 p-3 text-left whitespace-nowrap">Tipo / Área</th>
-                      <th className="border border-slate-300 p-3 text-left">Título</th>
-                      <th className="border border-slate-300 p-3 text-left min-w-[140px]">Apresentador</th>
-                      <th className="border border-slate-300 p-3 text-left whitespace-nowrap">Horário</th>
+                      <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">ID</th>
+                      <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">Tipo / Área</th>
+                      <th className="border border-slate-300 p-1.5 text-left">Título</th>
+                      <th className="border border-slate-300 p-1.5 text-left min-w-[140px]">Apresentador</th>
+                      <th className="border border-slate-300 p-1.5 text-left whitespace-nowrap">Horário</th>
                     </tr>
                   </thead>
                   <tbody>
                     {assignedWorks.map(w => (
                       <tr key={w.id}>
-                        <td className="border border-slate-300 p-3 font-mono font-bold text-slate-700 whitespace-nowrap">{w.posterId}</td>
-                        <td className="border border-slate-300 p-3 whitespace-nowrap">
+                        <td className="border border-slate-300 p-1.5 font-mono font-bold text-slate-700 whitespace-nowrap">{w.posterId}</td>
+                        <td className="border border-slate-300 p-1.5 whitespace-nowrap">
                           <span className="font-bold uppercase text-xs text-slate-900">{w.type}</span><br/>
                           <span className="text-xs text-slate-500">{w.tematica}</span>
                         </td>
-                        <td className="border border-slate-300 p-3 font-medium text-slate-900">{w.title}</td>
-                        <td className="border border-slate-300 p-3 text-slate-600">{w.presenterName}</td>
-                        <td className="border border-slate-300 p-3 text-slate-600 whitespace-nowrap">
+                        <td className="border border-slate-300 p-1.5 font-medium text-slate-900">{w.title}</td>
+                        <td className="border border-slate-300 p-1.5 text-slate-600">{w.presenterName}</td>
+                        <td className="border border-slate-300 p-1.5 text-slate-600 whitespace-nowrap">
                           {w.type === 'oral' && w.presentationDate ? w.presentationDate : ''}
                           {w.type === 'oral' && w.presentationDate && w.presentationTime ? <br/> : ''}
                           {w.presentationTime || '-'}
