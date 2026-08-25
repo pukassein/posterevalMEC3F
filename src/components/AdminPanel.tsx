@@ -332,7 +332,10 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   }, [localWorks]);
 
   const getAssignedEvaluatorCount = (workId: string) => {
-    return Object.keys(localAssignments).filter(evId => (localAssignments[evId] || []).includes(workId)).length;
+    const work = localWorks.find(item => item.id === workId);
+    return Object.keys(localAssignments).filter(evId => (localAssignments[evId] || []).some(assignment =>
+      assignment === workId || (work && normalizePosterCode(assignment) === normalizePosterCode(work.posterId))
+    )).length;
   };
 
   const filterByEvaluatorCount = (count: number, filter: string) => {
@@ -481,7 +484,9 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
                   .filter(ev => !searchAssignmentEvaluators.trim() || ev.name.toLocaleLowerCase().includes(searchAssignmentEvaluators.toLocaleLowerCase()))
                   .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
                   .map(ev => {
-                  const isAssigned = (localAssignments[ev.id] || []).includes(work.id);
+                  const isAssigned = (localAssignments[ev.id] || []).some(assignment =>
+                    assignment === work.id || normalizePosterCode(assignment) === normalizePosterCode(work.posterId)
+                  );
                   const isMatch = ev.areas?.includes(work.tematica as Tematica);
                   return (
                     <button
@@ -535,7 +540,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
         </div>
         {printEvaluatorsList.map((ev, index) => {
           const assignedWorks = (localAssignments[ev.id] || [])
-            .map(wId => localWorks.find(w => w.id === wId))
+            .map(assignment => localWorks.find(w => w.id === assignment || normalizePosterCode(assignment) === normalizePosterCode(w.posterId)))
             .filter(Boolean) as Poster[];
             
           assignedWorks.sort((a, b) => {

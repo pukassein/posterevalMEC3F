@@ -15,7 +15,13 @@ export function Dashboard({ posters, evaluations, evaluator, assignments, onSele
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTematica, setSelectedTematica] = useState<Tematica | 'ALL'>('ALL');
 
-  const assignedPosters = posters.filter(poster => assignments.includes(poster.id));
+  const normalizePosterCode = (value: string) => {
+    const match = value.trim().toUpperCase().replace(/\s+/g, '').match(/^([A-Z]+)-?(\d+)$/);
+    return match ? `${match[1]}${match[2].padStart(3, '0')}` : value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  };
+  const assignedPosters = posters.filter(poster => assignments.some(assignment =>
+    assignment === poster.id || normalizePosterCode(assignment) === normalizePosterCode(poster.posterId)
+  ));
 
   const filteredPosters = assignedPosters.filter(poster => {
     const matchesSearch = poster.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
