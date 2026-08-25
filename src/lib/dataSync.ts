@@ -101,7 +101,7 @@ export const syncToSupabase = async (table: string, data: any): Promise<{ succes
         // Fallback to name hack only if you don't run the SQL query
         return { id: d.id, name: d.name, accessCode: d.accessCode, areas: d.areas || [] };
       });
-      const response = await supabase.from('Eval_evaluators').upsert(formattedData, { onConflict: 'accessCode' });
+      const response = await supabase.from('Eval_evaluators').upsert(formattedData, { onConflict: 'id' });
       console.log(`[Diagnostic] Supabase response for Eval_evaluators:`, response);
       if (response.error) {
         console.error('[Error] Data persistence failing for Eval_evaluators:', response.error.message, response.error.details, response.error.hint);

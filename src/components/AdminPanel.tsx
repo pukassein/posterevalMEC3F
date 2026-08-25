@@ -230,6 +230,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
       const posterMap = new Map(localWorks.map(work => [normalizePosterCode(work.posterId), work.id]));
       const evaluatorsByName = new Map<string, Evaluator>(localEvaluators.map(ev => [ev.name.trim().toLocaleLowerCase(), ev] as [string, Evaluator]));
       const nextEvaluators = [...localEvaluators];
+      const usedAccessCodes = new Set(localEvaluators.map(ev => ev.accessCode));
       const nextAssignments = { ...localAssignments };
       const unmatched: string[] = [];
       const duplicates: string[] = [];
@@ -243,7 +244,12 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
         const key = name.toLocaleLowerCase();
         let evaluator = evaluatorsByName.get(key);
         if (!evaluator) {
-          evaluator = { id: `EV-${Date.now()}-${nextEvaluators.length}`, name, accessCode: Math.floor(1000 + Math.random() * 9000).toString(), areas: [] };
+          let accessCode = '';
+          do {
+            accessCode = Math.floor(1000 + Math.random() * 9000).toString();
+          } while (usedAccessCodes.has(accessCode));
+          usedAccessCodes.add(accessCode);
+          evaluator = { id: `EV-${Date.now()}-${nextEvaluators.length}`, name, accessCode, areas: [] };
           evaluatorsByName.set(key, evaluator);
           nextEvaluators.push(evaluator);
         }
