@@ -8,6 +8,19 @@ export const syncToSupabase = async (table: string, data: any): Promise<{ succes
   console.log(`[Diagnostic] Payload:`, JSON.stringify(data, null, 2));
 
   try {
+    const deleteMissingRows = async (column: string, values: string[]) => {
+      const { data: existingRows, error: fetchError } = await supabase.from(table).select(column);
+      if (fetchError) return fetchError;
+
+      const currentValues = new Set(values);
+      const rowsToDelete = (existingRows || []).filter((row: any) => !currentValues.has(row[column]));
+      for (const row of rowsToDelete) {
+        const { error } = await supabase.from(table).delete().eq(column, row[column]);
+        if (error) return error;
+      }
+      return null;
+    };
+
     if (table === 'Eval_posters') {
       // Omit the frontend-generated 'id' to let Supabase handle its UUID generation, 
       // otherwise we get UUID parsing errors if 'id' is a simple random string.
@@ -22,6 +35,8 @@ export const syncToSupabase = async (table: string, data: any): Promise<{ succes
         console.error('[Error] Data persistence failing for Eval_posters:', response.error.message, response.error.details, response.error.hint);
         return { success: false, error: response.error.message };
       }
+      const deleteError = await deleteMissingRows('posterId', data.map((d: any) => d.posterId));
+      if (deleteError) return { success: false, error: deleteError.message };
     } else if (table === 'Eval_criteria') {
       const response = await supabase.from('Eval_criteria').upsert(data, { onConflict: 'id' });
       console.log(`[Diagnostic] Supabase response for Eval_criteria:`, response);
@@ -29,6 +44,8 @@ export const syncToSupabase = async (table: string, data: any): Promise<{ succes
         console.error('Error syncing criteria:', response.error.message, response.error.details, response.error.hint);
         return { success: false, error: response.error.message };
       }
+      const deleteError = await deleteMissingRows('id', data.map((d: any) => d.id));
+      if (deleteError) return { success: false, error: deleteError.message };
     } else if (table === 'Eval_assignments') {
       const flatAssignments: any[] = [];
       const seen = new Set<string>();
@@ -90,6 +107,8 @@ export const syncToSupabase = async (table: string, data: any): Promise<{ succes
         console.error('[Error] Data persistence failing for Eval_evaluators:', response.error.message, response.error.details, response.error.hint);
         return { success: false, error: response.error.message };
       }
+      const deleteError = await deleteMissingRows('id', data.map((d: any) => d.id));
+      if (deleteError) return { success: false, error: deleteError.message };
     }
       return { success: true };
   } catch (error: any) {
