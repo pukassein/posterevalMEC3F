@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Award, FileText, Settings2, Users, Plus, Trash2, CheckSquare, Save, LogOut, ChevronDown, ChevronUp, Printer, UserPlus, Clock, Tag, RefreshCw, Search, X } from 'lucide-react';
 import { Poster, Criterion, Evaluation, Tematica, TEMATICAS, Evaluator } from '../types';
 import { fetchFromSupabase } from '../lib/dataSync';
+import * as XLSX from 'xlsx';
 
 interface AdminPanelProps {
   posters: Poster[];
@@ -33,6 +34,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const [searchAssignments, setSearchAssignments] = useState('');
   const [searchEvaluators, setSearchEvaluators] = useState('');
   const [searchAssignmentEvaluators, setSearchAssignmentEvaluators] = useState('');
+  const [isImportingAssignments, setIsImportingAssignments] = useState(false);
   const [resultsTematicaFilter, setResultsTematicaFilter] = useState<Tematica | 'ALL'>('ALL');
   const [resultsTypeFilter, setResultsTypeFilter] = useState<'ALL' | 'oral' | 'poster'>('ALL');
 
@@ -208,6 +210,63 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
 
   const handlePrintEvaluators = (evals: Evaluator[]) => {
     setPrintEvaluatorsList(evals);
+  };
+
+  const normalizePosterCode = (value: string) => {
+    const match = value.trim().toUpperCase().replace(/\s+/g, '').match(/^([A-Z]+)-?(\d+)$/);
+    return match ? `${match[1]}${match[2].padStart(3, '0')}` : value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  };
+
+  const handleImportAssignments = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setIsImportingAssignments(true);
+    try {
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+      const rows = XLSX.utils.sheet_to_json<any[]>(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: '' });
+      const posterMap = new Map(localWorks.map(work => [normalizePosterCode(work.posterId), work.id]));
+      const evaluatorsByName = new Map<string, Evaluator>(localEvaluators.map(ev => [ev.name.trim().toLocaleLowerCase(), ev] as [string, Evaluator]));
+      const nextEvaluators = [...localEvaluators];
+      const nextAssignments = { ...localAssignments };
+      const unmatched: string[] = [];
+      const duplicates: string[] = [];
+      let importedAssignments = 0;
+
+      rows.slice(1).forEach(row => {
+        const codes = String(row[0] || '').split(',').map(code => code.trim()).filter(Boolean);
+        const name = String(row[1] || '').trim();
+        if (!name) return;
+        const key = name.toLocaleLowerCase();
+        let evaluator = evaluatorsByName.get(key);
+        if (!evaluator) {
+          evaluator = { id: `EV-${Date.now()}-${nextEvaluators.length}`, name, accessCode: Math.floor(1000 + Math.random() * 9000).toString(), areas: [] };
+          evaluatorsByName.set(key, evaluator);
+          nextEvaluators.push(evaluator);
+        }
+        const assignments = new Set(nextAssignments[evaluator.id] || []);
+        codes.forEach(code => {
+          const workId = posterMap.get(normalizePosterCode(code));
+          if (!workId) {
+            unmatched.push(`${name}: ${code}`);
+          } else if (assignments.has(workId)) {
+            duplicates.push(`${name}: ${code}`);
+          } else {
+            assignments.add(workId);
+            importedAssignments++;
+          }
+        });
+        nextAssignments[evaluator.id] = Array.from(assignments);
+      });
+
+      setLocalEvaluators(nextEvaluators);
+      setLocalAssignments(nextAssignments);
+      alert(`Importação concluída: ${nextEvaluators.length - localEvaluators.length} avaliador(es) novo(s) e ${importedAssignments} atribuição(ões).${unmatched.length ? `\n\nNão encontrados (${unmatched.length}):\n${unmatched.join('\n')}` : ''}${duplicates.length ? `\n\nDuplicados ignorados (${duplicates.length}):\n${duplicates.join('\n')}` : ''}`);
+    } catch (error: any) {
+      alert('Erro ao importar a planilha: ' + error.message);
+    } finally {
+      setIsImportingAssignments(false);
+    }
   };
 
   const sortedWorks = [...localWorks].sort((a, b) => a.posterId.localeCompare(b.posterId));
@@ -880,15 +939,21 @@ return (
                   <h2 className="text-xl font-bold text-slate-900">Gerenciar Atribuições</h2>
                   <p className="text-sm text-slate-500 mt-1">Veja quais trabalhos estão atribuídos a cada avaliador e remova atribuições se necessário.</p>
                 </div>
-                <div className="relative w-full sm:w-64 shrink-0">
-                  <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input 
-                    type="text" 
-                    placeholder="Buscar avaliador..." 
-                    value={searchAssignments} 
-                    onChange={(e) => setSearchAssignments(e.target.value)} 
-                    className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-colors"
-                  />
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <label className="cursor-pointer inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-bold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors">
+                    <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImportAssignments} className="hidden" />
+                    {isImportingAssignments ? 'Importando...' : 'Importar planilha'}
+                  </label>
+                  <div className="relative w-full sm:w-64 shrink-0">
+                    <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Buscar avaliador..." 
+                      value={searchAssignments} 
+                      onChange={(e) => setSearchAssignments(e.target.value)} 
+                      className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-colors"
+                    />
+                  </div>
                 </div>
               </div>
               <div className="space-y-6">
