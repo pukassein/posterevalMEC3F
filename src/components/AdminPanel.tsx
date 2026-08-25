@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Award, FileText, Settings2, Users, Plus, Trash2, CheckSquare, Save, LogOut, ChevronDown, ChevronUp, Printer, UserPlus, Clock, Tag, RefreshCw, Search, X } from 'lucide-react';
+import { Award, FileText, Settings2, Users, Plus, Trash2, CheckSquare, Save, LogOut, ChevronDown, ChevronUp, Printer, UserPlus, Clock, Tag, RefreshCw, Search, X, Download } from 'lucide-react';
 import { Poster, Criterion, Evaluation, Tematica, TEMATICAS, Evaluator } from '../types';
 import { fetchFromSupabase } from '../lib/dataSync';
 import * as XLSX from 'xlsx';
@@ -212,6 +212,21 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
 
   const handlePrintEvaluators = (evals: Evaluator[]) => {
     setPrintEvaluatorsList(evals);
+  };
+
+  const handleExportEvaluators = () => {
+    const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const csv = [
+      ['Avaliador', 'Código de Acesso'],
+      ...filteredEvaluators.map(ev => [ev.name, ev.accessCode])
+    ].map(row => row.map(escapeCsv).join(';')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'avaliadores_codigos.csv';
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const normalizePosterCode = (value: string) => {
@@ -1109,6 +1124,13 @@ return (
                   </h2>
                   {localEvaluators.length > 0 && (
                     <div className="flex gap-2 ml-auto">
+                      <button
+                        onClick={handleExportEvaluators}
+                        className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition font-bold text-sm"
+                      >
+                        <Download className="w-4 h-4" />
+                        Exportar Excel
+                      </button>
                       <button
                         onClick={handleResetEvaluators}
                         className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition font-bold text-sm"
