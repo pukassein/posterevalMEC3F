@@ -534,12 +534,15 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
         <style>
           {`
             @media print {
-              @page { margin: 1cm; }
+              @page {
+                margin: 1cm;
+                @bottom-right { content: "Página " counter(page) " / " counter(pages); font-size: 9pt; color: #334155; }
+              }
               body { background: white; }
               .page-break { page-break-after: always; }
               .print-guide { break-inside: avoid; }
               tr { break-inside: avoid; }
-              .print-page-number::after { content: "Página " counter(page) " / " counter(pages); }
+              .print-page-number { display: none; }
             }
           `}
         </style>
