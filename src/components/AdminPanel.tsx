@@ -210,6 +210,9 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   };
 
   const [printEvaluatorsList, setPrintEvaluatorsList] = useState<Evaluator[] | null>(null);
+  const [evaluationActionId, setEvaluationActionId] = useState<string | null>(null);
+  const [workSettingsOpen, setWorkSettingsOpen] = useState(false);
+  const [evaluatorSettingsOpen, setEvaluatorSettingsOpen] = useState(false);
 
   const handlePrintEvaluators = (evals: Evaluator[]) => {
     setPrintEvaluatorsList(evals);
@@ -803,12 +806,24 @@ return (
                       </td>
                       <td className="p-4 text-right">
                         {stat.evalCount > 0 && (
-                          <button
-                            onClick={() => onClearEvaluation(stat.id)}
-                            className="text-xs font-bold text-red-600 hover:text-red-800 hover:underline"
-                          >
-                            Limpar avaliação
-                          </button>
+                          <div className="relative inline-flex items-center gap-2">
+                            {evaluationActionId === stat.id && (
+                              <button
+                                onClick={() => { setEvaluationActionId(null); onClearEvaluation(stat.id); }}
+                                className="text-xs font-bold text-red-600 hover:text-red-800 hover:underline"
+                              >
+                                Limpar avaliação
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setEvaluationActionId(current => current === stat.id ? null : stat.id)}
+                              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition"
+                              title="Opções da avaliação"
+                              aria-label={`Opções da avaliação de ${stat.posterId}`}
+                            >
+                              <Settings2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -831,25 +846,21 @@ return (
                 </div>
               </div>
               <div className="mt-4 pt-2">
-                <button
-                  type="button"
-                  onClick={handleSyncWorks}
-                  disabled={isSyncing}
-                  className="flex items-center justify-between w-full p-4 mb-4 bg-teal-50 border border-teal-200 rounded-xl hover:bg-teal-100 transition disabled:opacity-50"
-                >
-                  <span className="text-sm font-bold text-teal-900 uppercase tracking-wider flex items-center gap-2">
-                    <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
-                    Sincronizar Trabalhos do Banco do Evento
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAddWork(!showAddWork)}
-                  className="flex items-center justify-between w-full p-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition"
-                >
-                  <span className="text-sm font-bold text-slate-900 uppercase tracking-wider">Adicionar Novo Trabalho</span>
-                  <Plus className={`w-5 h-5 text-slate-600 transition-transform ${showAddWork ? 'rotate-45' : ''}`} />
-                </button>
+                <div className="flex justify-end relative">
+                  <button type="button" onClick={() => setWorkSettingsOpen(open => !open)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+                    <Settings2 className="w-4 h-4" /> Opções
+                  </button>
+                  {workSettingsOpen && (
+                    <div className="absolute right-0 top-11 z-10 w-72 p-2 bg-white border border-slate-200 rounded-xl shadow-lg space-y-1">
+                      <button type="button" onClick={handleSyncWorks} disabled={isSyncing} className="flex items-center gap-2 w-full p-3 text-left text-sm font-bold text-teal-900 rounded-lg hover:bg-teal-50 disabled:opacity-50">
+                        <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} /> Sincronizar trabalhos
+                      </button>
+                      <button type="button" onClick={() => setShowAddWork(!showAddWork)} className="flex items-center gap-2 w-full p-3 text-left text-sm font-bold text-slate-900 rounded-lg hover:bg-slate-50">
+                        <Plus className="w-4 h-4" /> {showAddWork ? 'Fechar formulário' : 'Adicionar novo trabalho'}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 {showAddWork && (
                   <form onSubmit={(e) => { handleAddWork(e); setShowAddWork(false); }} className="flex flex-col gap-4 mt-4 p-4 border border-slate-200 rounded-xl bg-white shadow-sm">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1183,27 +1194,17 @@ return (
                     Gerenciar Avaliadores
                   </h2>
                   {localEvaluators.length > 0 && (
-                    <div className="flex gap-2 ml-auto">
-                      <button
-                        onClick={handleExportEvaluators}
-                        className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition font-bold text-sm"
-                      >
-                        <Download className="w-4 h-4" />
-                        Exportar Excel
+                    <div className="relative ml-auto">
+                      <button onClick={() => setEvaluatorSettingsOpen(open => !open)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+                        <Settings2 className="w-4 h-4" /> Opções
                       </button>
-                      <button
-                        onClick={handleResetEvaluators}
-                        className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition font-bold text-sm"
-                      >
-                        Limpar Avaliadores
-                      </button>
-                      <button
-                        onClick={() => handlePrintEvaluators(filteredEvaluators)}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition font-bold text-sm"
-                      >
-                        <Printer className="w-4 h-4" />
-                        Imprimir Todos
-                      </button>
+                      {evaluatorSettingsOpen && (
+                        <div className="absolute right-0 top-11 z-10 w-56 p-2 bg-white border border-slate-200 rounded-xl shadow-lg space-y-1">
+                          <button onClick={handleExportEvaluators} className="flex items-center gap-2 w-full p-3 text-left text-sm font-bold text-slate-700 rounded-lg hover:bg-slate-50"><Download className="w-4 h-4" /> Exportar Excel</button>
+                          <button onClick={handleResetEvaluators} className="flex items-center gap-2 w-full p-3 text-left text-sm font-bold text-red-700 rounded-lg hover:bg-red-50"><Trash2 className="w-4 h-4" /> Limpar avaliadores</button>
+                          <button onClick={() => handlePrintEvaluators(filteredEvaluators)} className="flex items-center gap-2 w-full p-3 text-left text-sm font-bold text-slate-700 rounded-lg hover:bg-slate-50"><Printer className="w-4 h-4" /> Imprimir todos</button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
