@@ -42,14 +42,17 @@ export function Dashboard({ posters, evaluations, evaluator, assignments, onSele
   const emergencyResults = posters.filter(poster => {
     const query = emergencyQuery.trim().toLowerCase();
     if (!query) return false;
-    return poster.title.toLowerCase().includes(query) ||
-      poster.posterId.toLowerCase().includes(query) ||
-      poster.tematica?.toLowerCase().includes(query) ||
-      (poster.tematica ? TEMATICAS[poster.tematica].toLowerCase().includes(query) : false);
+    const title = String(poster.title || '').toLowerCase();
+    const code = String(poster.posterId || '').toLowerCase();
+    const tematica = String(poster.tematica || '').toLowerCase();
+    const tematicaLabel = poster.tematica && TEMATICAS[poster.tematica]
+      ? TEMATICAS[poster.tematica].toLowerCase()
+      : '';
+    return title.includes(query) || code.includes(query) || tematica.includes(query) || tematicaLabel.includes(query);
   }).slice(0, 12);
 
   const isAssigned = (poster: Poster) => assignments.some(assignment =>
-    assignment === poster.id || assignment.toUpperCase() === poster.posterId.toUpperCase()
+    assignment === poster.id || String(assignment).toUpperCase() === String(poster.posterId || '').toUpperCase()
   );
 
   const getEvaluationStatus = (posterId: string) => {

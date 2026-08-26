@@ -1086,7 +1086,7 @@ return (
                     const assignedWorks = localAssignments[ev.id] || [];
                     if (assignedWorks.length === 0) return null;
                     return (
-                      <div key={ev.id} className="border border-slate-200 rounded-xl overflow-hidden">
+                      <div key={ev.id} className="border border-slate-200 rounded-xl overflow-visible">
                         <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
                           <h3 className="font-bold text-slate-900">{ev.name}</h3>
                           <span className="text-xs font-bold bg-teal-100 text-teal-800 px-2 py-1 rounded-md">{assignedWorks.length} Trabalho{assignedWorks.length !== 1 ? 's' : ''}</span>
@@ -1119,8 +1119,20 @@ return (
                                 {assignmentWorkId === work.id && (
                                   <div className="absolute left-0 right-0 top-full z-20 mt-2 p-3 bg-white border border-slate-200 rounded-xl shadow-lg" onClick={(event) => event.stopPropagation()}>
                                     <p className="text-xs font-bold text-slate-700 mb-2">Avaliadores deste trabalho</p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {localEvaluators.map(otherEvaluator => {
+                                    <div className="relative mb-3">
+                                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                      <input
+                                        autoFocus
+                                        value={searchAssignmentEvaluators}
+                                        onChange={(event) => setSearchAssignmentEvaluators(event.target.value)}
+                                        placeholder="Buscar avaliador..."
+                                        className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                                      />
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
+                                      {localEvaluators
+                                        .filter(otherEvaluator => !searchAssignmentEvaluators.trim() || otherEvaluator.name.toLocaleLowerCase().includes(searchAssignmentEvaluators.toLocaleLowerCase()))
+                                        .map(otherEvaluator => {
                                         const isAssigned = (localAssignments[otherEvaluator.id] || []).some(assignment => {
                                           const assignedWork = localWorks.find(item => item.id === assignment);
                                           return assignment === work.id || normalizePosterCode(assignedWork?.posterId || assignment) === normalizePosterCode(work.posterId);
@@ -1134,7 +1146,10 @@ return (
                                             {isAssigned ? '✓ ' : ''}{otherEvaluator.name}
                                           </button>
                                         );
-                                      })}
+                                        })}
+                                      {localEvaluators.filter(otherEvaluator => !searchAssignmentEvaluators.trim() || otherEvaluator.name.toLocaleLowerCase().includes(searchAssignmentEvaluators.toLocaleLowerCase())).length === 0 && (
+                                        <p className="text-xs text-slate-500 italic py-2">Nenhum avaliador encontrado.</p>
+                                      )}
                                     </div>
                                   </div>
                                 )}
