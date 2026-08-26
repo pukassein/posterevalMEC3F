@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Award, FileText, Settings2, Users, Plus, Trash2, CheckSquare, Save, LogOut, ChevronDown, ChevronUp, Printer, UserPlus, Clock, Tag, RefreshCw, Search, X, Download } from 'lucide-react';
+import { Award, FileText, Settings2, Users, Plus, Trash2, CheckSquare, Save, LogOut, ChevronDown, ChevronUp, Printer, UserPlus, Clock, Tag, RefreshCw, Search, X, Download, Pencil } from 'lucide-react';
 import { Poster, Criterion, Evaluation, Tematica, TEMATICAS, Evaluator } from '../types';
 import { fetchFromSupabase } from '../lib/dataSync';
 import * as XLSX from 'xlsx';
@@ -62,6 +62,13 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const [showAddWork, setShowAddWork] = useState(false);
   const [expandedWorkId, setExpandedWorkId] = useState<string | null>(null);
   const [assignmentWorkId, setAssignmentWorkId] = useState<string | null>(null);
+  const [editingWorkId, setEditingWorkId] = useState<string | null>(null);
+  const [editWorkTitle, setEditWorkTitle] = useState('');
+  const [editWorkPresenter, setEditWorkPresenter] = useState('');
+  const [editWorkCode, setEditWorkCode] = useState('');
+  const [editWorkTematica, setEditWorkTematica] = useState<Tematica>('SMA');
+  const [editWorkDate, setEditWorkDate] = useState('');
+  const [editWorkTime, setEditWorkTime] = useState('');
 
   useEffect(() => {
     onSavePosters(localWorks);
@@ -114,6 +121,30 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
         return updated;
       });
     }
+  };
+
+  const handleEditWorkClick = (work: Poster) => {
+    setEditingWorkId(work.id);
+    setEditWorkTitle(work.title);
+    setEditWorkPresenter(work.presenterName);
+    setEditWorkCode(work.posterId);
+    setEditWorkTematica(work.tematica || 'SMA');
+    setEditWorkDate(work.presentationDate || '');
+    setEditWorkTime(work.presentationTime || '');
+  };
+
+  const handleSaveWork = (id: string) => {
+    if (!editWorkTitle.trim() || !editWorkPresenter.trim() || !editWorkCode.trim()) return;
+    setLocalWorks(prev => prev.map(work => work.id === id ? {
+      ...work,
+      title: editWorkTitle.trim(),
+      presenterName: editWorkPresenter.trim(),
+      posterId: editWorkCode.trim().toUpperCase(),
+      tematica: editWorkTematica,
+      presentationDate: work.type === 'oral' ? editWorkDate : undefined,
+      presentationTime: editWorkTime.trim()
+    } : work));
+    setEditingWorkId(null);
   };
 
   const handleAddCriterion = (e: React.FormEvent) => {
@@ -467,6 +498,13 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
             <div className="text-sm font-medium text-slate-500 mt-1">{work.presenterName}</div>
           </div>
           <button 
+            onClick={(e) => { e.stopPropagation(); handleEditWorkClick(work); }}
+            className="text-slate-500 hover:text-teal-700 hover:bg-white p-2 rounded-lg transition-colors flex items-center justify-center sm:absolute sm:top-2 sm:right-12"
+            title="Editar trabalho"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button 
             onClick={(e) => { e.stopPropagation(); handleRemoveWork(work.id); }}
             className="text-red-500 hover:text-red-700 hover:bg-white p-2 rounded-lg transition-colors flex items-center justify-center sm:absolute sm:top-2 sm:right-2"
             title="Remover trabalho"
@@ -474,6 +512,25 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
             <Trash2 className="w-5 h-5" />
           </button>
         </div>
+
+        {editingWorkId === work.id && (
+          <div className="mt-4 pt-4 border-t border-slate-200 space-y-3" onClick={(e) => e.stopPropagation()}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input value={editWorkCode} onChange={(e) => setEditWorkCode(e.target.value)} placeholder="Código" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+              <select value={editWorkTematica} onChange={(e) => setEditWorkTematica(e.target.value as Tematica)} className="px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                {Object.entries(TEMATICAS).map(([key, value]) => <option key={key} value={key}>{value}</option>)}
+              </select>
+              <input value={editWorkTitle} onChange={(e) => setEditWorkTitle(e.target.value)} placeholder="Título" className="px-3 py-2 border border-slate-200 rounded-lg text-sm md:col-span-2" />
+              <input value={editWorkPresenter} onChange={(e) => setEditWorkPresenter(e.target.value)} placeholder="Apresentador" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+              <input value={editWorkTime} onChange={(e) => setEditWorkTime(e.target.value)} placeholder="Horário" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+              {work.type === 'oral' && <input value={editWorkDate} onChange={(e) => setEditWorkDate(e.target.value)} placeholder="Data (ex.: 26/08)" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setEditingWorkId(null)} className="px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+              <button type="button" onClick={() => handleSaveWork(work.id)} className="px-3 py-2 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-lg flex items-center gap-1"><Save className="w-4 h-4" /> Salvar</button>
+            </div>
+          </div>
+        )}
         
         {isExpanded && (
           <div className="mt-4 pt-4 border-t border-slate-200 flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
@@ -1093,7 +1150,7 @@ return (
                         </div>
                         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                           {assignedWorks.map(workId => {
-                            const work = localWorks.find(w => w.id === workId);
+                            const work = localWorks.find(w => w.id === workId || normalizePosterCode(w.posterId) === normalizePosterCode(workId));
                             if (!work) return null;
                             return (
                               <div
