@@ -1098,7 +1098,10 @@ return (
                             return (
                               <div
                                 key={work.id}
-                                onClick={() => setAssignmentWorkId(assignmentWorkId === work.id ? null : work.id)}
+                                onClick={() => {
+                                  setAssignmentWorkId(assignmentWorkId === work.id ? null : work.id);
+                                  setSearchAssignmentEvaluators('');
+                                }}
                                 className={`text-sm p-3 bg-white border rounded-lg shadow-sm flex items-start gap-2 relative group pr-8 cursor-pointer transition-colors ${assignmentWorkId === work.id ? 'border-teal-400 ring-1 ring-teal-200' : 'border-slate-200 hover:border-teal-300'}`}
                                 title="Clique para alterar os avaliadores"
                               >
@@ -1125,9 +1128,25 @@ return (
                                         autoFocus
                                         value={searchAssignmentEvaluators}
                                         onChange={(event) => setSearchAssignmentEvaluators(event.target.value)}
+                                        onKeyDown={(event) => {
+                                          if (event.key === 'Escape') {
+                                            setSearchAssignmentEvaluators('');
+                                            setAssignmentWorkId(null);
+                                          }
+                                        }}
                                         placeholder="Buscar avaliador..."
-                                        className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                                        className="w-full pl-9 pr-9 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
                                       />
+                                      {searchAssignmentEvaluators && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setSearchAssignmentEvaluators('')}
+                                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 rounded"
+                                          title="Limpar busca"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
                                     </div>
                                     <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
                                       {localEvaluators
