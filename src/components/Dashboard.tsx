@@ -8,12 +8,15 @@ interface DashboardProps {
   evaluator: Evaluator;
   assignments: string[];
   onSelectPoster: (poster: Poster) => void;
+  onAddAssignment: (posterId: string) => void;
   onLogout: () => void;
 }
 
-export function Dashboard({ posters, evaluations, evaluator, assignments, onSelectPoster, onLogout }: DashboardProps) {
+export function Dashboard({ posters, evaluations, evaluator, assignments, onSelectPoster, onAddAssignment, onLogout }: DashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTematica, setSelectedTematica] = useState<Tematica | 'ALL'>('ALL');
+  const [showEmergencySearch, setShowEmergencySearch] = useState(false);
+  const [emergencyQuery, setEmergencyQuery] = useState('');
 
   const normalizePosterCode = (value: string) => {
     const match = value.trim().toUpperCase().replace(/\s+/g, '').match(/^([A-Z]+)-?(\d+)$/);
@@ -35,6 +38,19 @@ export function Dashboard({ posters, evaluations, evaluator, assignments, onSele
 
     return matchesSearch && matchesTematica;
   });
+
+  const emergencyResults = posters.filter(poster => {
+    const query = emergencyQuery.trim().toLowerCase();
+    if (!query) return false;
+    return poster.title.toLowerCase().includes(query) ||
+      poster.posterId.toLowerCase().includes(query) ||
+      poster.tematica?.toLowerCase().includes(query) ||
+      (poster.tematica ? TEMATICAS[poster.tematica].toLowerCase().includes(query) : false);
+  }).slice(0, 12);
+
+  const isAssigned = (poster: Poster) => assignments.some(assignment =>
+    assignment === poster.id || assignment.toUpperCase() === poster.posterId.toUpperCase()
+  );
 
   const getEvaluationStatus = (posterId: string) => {
     return evaluations.some(e => e.posterId === posterId && e.evaluatorId === evaluator.id);
@@ -66,6 +82,12 @@ export function Dashboard({ posters, evaluations, evaluator, assignments, onSele
         
         {/* Search Bar & Filters */}
         <div className="max-w-3xl mx-auto px-4 pb-4 space-y-3">
+          <button
+            onClick={() => { setShowEmergencySearch(true); setEmergencyQuery(''); }}
+            className="w-full py-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-sm font-bold hover:bg-amber-100 transition-colors"
+          >
+            + Adicionar trabalho para avaliação (emergência)
+          </button>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-slate-400" />
@@ -102,6 +124,30 @@ export function Dashboard({ posters, evaluations, evaluator, assignments, onSele
           </div>
         </div>
       </header>
+
+      {showEmergencySearch && (
+        <div className="fixed inset-0 z-30 bg-slate-900/40 p-4 flex items-start justify-center pt-20" onClick={() => setShowEmergencySearch(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-5" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Adicionar trabalho</h2>
+                <p className="text-sm text-slate-500">Busque por temática, código ou título.</p>
+              </div>
+              <button onClick={() => setShowEmergencySearch(false)} className="text-slate-400 hover:text-slate-700 text-2xl">×</button>
+            </div>
+            <input autoFocus value={emergencyQuery} onChange={(event) => setEmergencyQuery(event.target.value)} placeholder="Ex.: SMA, P-101 ou título..." className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none" />
+            <div className="mt-4 space-y-2 max-h-[50vh] overflow-y-auto">
+              {emergencyQuery.trim() && emergencyResults.map(poster => (
+                <button key={poster.id} onClick={() => { onAddAssignment(poster.id); setShowEmergencySearch(false); onSelectPoster(poster); }} className="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-teal-400 hover:bg-teal-50 transition-colors">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-500"><span>{poster.posterId}</span><span>•</span><span>{poster.tematica || 'Sem temática'}</span>{isAssigned(poster) && <span className="text-teal-700">Já atribuído</span>}</div>
+                  <div className="font-semibold text-slate-900 mt-1">{poster.title}</div>
+                </button>
+              ))}
+              {emergencyQuery.trim() && emergencyResults.length === 0 && <p className="text-sm text-slate-500 text-center py-6">Nenhum trabalho encontrado.</p>}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Poster List */}
       <main className="flex-1 overflow-y-auto max-w-3xl mx-auto w-full p-4 pb-12">

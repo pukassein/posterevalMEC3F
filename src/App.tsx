@@ -164,6 +164,13 @@ export default function App() {
     }
   };
 
+  const handleAddAssignment = (posterId: string) => {
+    if (!evaluator) return;
+    const current = assignments[evaluator.id] || [];
+    if (current.includes(posterId)) return;
+    handleSaveAssignments({ ...assignments, [evaluator.id]: [...current, posterId] });
+  };
+
   const handleSaveCriteria = async (newCriteria: Criterion[]) => {
     setCriteria(newCriteria);
     localStorage.setItem('poster_eval_criteria', JSON.stringify(newCriteria));
@@ -233,6 +240,7 @@ export default function App() {
           evaluator={evaluator}
           assignments={currentEvaluatorAssignments}
           onSelectPoster={handleSelectPoster}
+          onAddAssignment={handleAddAssignment}
           onLogout={handleLogout}
         />
       )}
