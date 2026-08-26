@@ -15,6 +15,8 @@ interface DashboardProps {
 export function Dashboard({ posters, evaluations, evaluator, assignments, onSelectPoster, onAddAssignment, onLogout }: DashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTematica, setSelectedTematica] = useState<Tematica | 'ALL'>('ALL');
+  const [selectedType, setSelectedType] = useState<'ALL' | 'poster' | 'oral'>('ALL');
+  const [selectedDate, setSelectedDate] = useState<string>('ALL');
   const [showEmergencySearch, setShowEmergencySearch] = useState(false);
   const [emergencyQuery, setEmergencyQuery] = useState('');
 
@@ -35,9 +37,20 @@ export function Dashboard({ posters, evaluations, evaluator, assignments, onSele
       poster.presenterName.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesTematica = selectedTematica === 'ALL' || poster.tematica === selectedTematica;
+    const matchesType = selectedType === 'ALL' || poster.type === selectedType;
+    const matchesDate = selectedDate === 'ALL' || poster.presentationDate === selectedDate;
 
-    return matchesSearch && matchesTematica;
+    return matchesSearch && matchesTematica && matchesType && matchesDate;
   });
+
+  const presentationDates = Array.from(new Set(assignedPosters.map(poster => poster.presentationDate).filter(Boolean) as string[])).sort();
+  const formatDate = (date: string) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [, month, day] = date.split('-');
+      return `${day}/${month}`;
+    }
+    return date;
+  };
 
   const emergencyResults = posters.filter(poster => {
     const query = emergencyQuery.trim().toLowerCase();
@@ -125,6 +138,27 @@ export function Dashboard({ posters, evaluations, evaluator, assignments, onSele
               </button>
             ))}
           </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select
+              value={selectedType}
+              onChange={(event) => setSelectedType(event.target.value as 'ALL' | 'poster' | 'oral')}
+              className="flex-1 px-3 py-2 text-sm font-semibold border border-slate-200 rounded-lg bg-white text-slate-700 focus:ring-2 focus:ring-teal-500 outline-none"
+              aria-label="Filtrar por tipo de trabalho"
+            >
+              <option value="ALL">Todos os tipos</option>
+              <option value="poster">Pôsteres</option>
+              <option value="oral">Comunicação Oral</option>
+            </select>
+            <select
+              value={selectedDate}
+              onChange={(event) => setSelectedDate(event.target.value)}
+              className="flex-1 px-3 py-2 text-sm font-semibold border border-slate-200 rounded-lg bg-white text-slate-700 focus:ring-2 focus:ring-teal-500 outline-none"
+              aria-label="Filtrar por data de apresentação"
+            >
+              <option value="ALL">Todas as datas</option>
+              {presentationDates.map(date => <option key={date} value={date}>{formatDate(date)}</option>)}
+            </select>
+          </div>
         </div>
       </header>
 
@@ -154,6 +188,10 @@ export function Dashboard({ posters, evaluations, evaluator, assignments, onSele
 
       {/* Poster List */}
       <main className="flex-1 overflow-y-auto max-w-3xl mx-auto w-full p-4 pb-12">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <h2 className="text-base font-bold text-slate-800">Meus trabalhos</h2>
+          <span className="text-xs font-semibold text-slate-500">{filteredPosters.length} encontrado{filteredPosters.length !== 1 ? 's' : ''}</span>
+        </div>
         <div className="space-y-4">
           {assignedPosters.length === 0 ? (
             <div className="text-center py-16 px-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
@@ -227,7 +265,7 @@ export function Dashboard({ posters, evaluations, evaluator, assignments, onSele
             })
           ) : (
             <div className="text-center py-12">
-              <p className="text-slate-500">Nenhum pôster encontrado para "{searchQuery}"</p>
+              <p className="text-slate-500">Nenhum trabalho encontrado com esses filtros.</p>
             </div>
           )}
         </div>
