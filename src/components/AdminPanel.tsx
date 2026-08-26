@@ -61,6 +61,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const [isSyncing, setIsSyncing] = useState(false);
   const [showAddWork, setShowAddWork] = useState(false);
   const [expandedWorkId, setExpandedWorkId] = useState<string | null>(null);
+  const [assignmentWorkId, setAssignmentWorkId] = useState<string | null>(null);
 
   useEffect(() => {
     onSavePosters(localWorks);
@@ -1095,20 +1096,48 @@ return (
                             const work = localWorks.find(w => w.id === workId);
                             if (!work) return null;
                             return (
-                              <div key={work.id} className="text-sm p-3 bg-white border border-slate-200 rounded-lg shadow-sm flex items-start gap-2 relative group pr-8">
+                              <div
+                                key={work.id}
+                                onClick={() => setAssignmentWorkId(assignmentWorkId === work.id ? null : work.id)}
+                                className={`text-sm p-3 bg-white border rounded-lg shadow-sm flex items-start gap-2 relative group pr-8 cursor-pointer transition-colors ${assignmentWorkId === work.id ? 'border-teal-400 ring-1 ring-teal-200' : 'border-slate-200 hover:border-teal-300'}`}
+                                title="Clique para alterar os avaliadores"
+                              >
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase mt-0.5 shrink-0 ${work.type === 'poster' ? 'bg-indigo-100 text-indigo-700' : 'bg-orange-100 text-orange-700'}`}>
                                   {work.posterId}
                                 </span>
                                 <div className="flex-1">
                                   <div className="font-medium text-slate-900 leading-tight">{work.title}</div>
+                                  <div className="text-xs text-teal-700 mt-2 font-semibold">Clique para alterar avaliadores</div>
                                 </div>
                                 <button
-                                  onClick={() => handleToggleAssignmentFromWork(work.id, ev.id)}
+                                  onClick={(event) => { event.stopPropagation(); handleToggleAssignmentFromWork(work.id, ev.id); }}
                                   className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors opacity-0 group-hover:opacity-100"
                                   title="Remover atribuição"
                                 >
                                   <X className="w-4 h-4" />
                                 </button>
+                                {assignmentWorkId === work.id && (
+                                  <div className="absolute left-0 right-0 top-full z-20 mt-2 p-3 bg-white border border-slate-200 rounded-xl shadow-lg" onClick={(event) => event.stopPropagation()}>
+                                    <p className="text-xs font-bold text-slate-700 mb-2">Avaliadores deste trabalho</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {localEvaluators.map(otherEvaluator => {
+                                        const isAssigned = (localAssignments[otherEvaluator.id] || []).some(assignment => {
+                                          const assignedWork = localWorks.find(item => item.id === assignment);
+                                          return assignment === work.id || normalizePosterCode(assignedWork?.posterId || assignment) === normalizePosterCode(work.posterId);
+                                        });
+                                        return (
+                                          <button
+                                            key={otherEvaluator.id}
+                                            onClick={() => handleToggleAssignmentFromWork(work.id, otherEvaluator.id)}
+                                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors ${isAssigned ? 'bg-teal-50 border-teal-400 text-teal-900' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                          >
+                                            {isAssigned ? '✓ ' : ''}{otherEvaluator.name}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
