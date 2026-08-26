@@ -394,6 +394,9 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
            work.presenterName.toLowerCase().includes(lowerQuery);
   };
 
+  const isWorkEvaluated = (work: Poster) =>
+    evaluations.some(evaluation => evaluation.posterId === work.id);
+
   const posterStats = useMemo(() => {
     let filteredWorks = localWorks;
     
@@ -468,6 +471,10 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${work.type === 'poster' ? 'bg-indigo-100 text-indigo-700' : 'bg-orange-100 text-orange-700'}`}>
                 {work.type === 'poster' ? 'Pôster' : 'Oral'}
+              </span>
+              <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${isWorkEvaluated(work) ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                <CheckSquare className="w-3 h-3" />
+                {isWorkEvaluated(work) ? 'Avaliado' : 'Pendente'}
               </span>
               <div className="text-xs font-mono font-bold px-2 py-0.5 border border-slate-200 rounded-md text-slate-600 bg-white">ID: {work.posterId}</div>
               {work.presentationDate && (
