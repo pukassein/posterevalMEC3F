@@ -433,6 +433,9 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
 
       const averageScore = evalCount > 0 ? totalScore / evalCount : 0;
       const normalizedMax = evalCount > 0 ? maxPossible / evalCount : 0;
+      const evaluatorNames = workEvals.map(ev =>
+        localEvaluators.find(evaluator => evaluator.id === ev.evaluatorId)?.name || ev.evaluatorId
+      );
 
       return {
         id: work.id,
@@ -445,6 +448,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
         evalCount,
         averageScore,
         maxPossible: normalizedMax,
+        evaluatorNames,
         comments: workEvals.filter(e => e.generalComments?.trim()).map(e => e.generalComments.trim()),
         normalizedId
       };
@@ -454,7 +458,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
       if (b.evalCount !== a.evalCount) return b.evalCount - a.evalCount;
       return b.averageScore - a.averageScore;
     });
-  }, [localWorks, evaluations, localCriteria, resultsTypeFilter, resultsTematicaFilter, resultsSort]);
+  }, [localWorks, evaluations, localCriteria, localEvaluators, resultsTypeFilter, resultsTematicaFilter, resultsSort]);
 
   const visiblePosterStats = useMemo(() => posterStats.filter(stat => {
     const q = resultsSearch.trim().toLowerCase();
@@ -462,7 +466,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   }), [posterStats, resultsSearch]);
 
   const handleExportResults = (type: 'oral' | 'poster', tematica: Tematica) => {
-    const rows = posterStats.filter(s => s.type === type && s.tematica === tematica).map(s => ({ ID: s.posterId, 'IDs duplicados': s.allIds.join(', '), Temática: s.tematica, Tipo: type, Título: s.title, Apresentador: s.presenterName, 'Nº avaliações': s.evalCount, 'Nota média': Number(s.averageScore.toFixed(2)), Comentários: s.comments.join(' | ') }));
+    const rows = posterStats.filter(s => s.type === type && s.tematica === tematica).map(s => ({ ID: s.posterId, 'IDs duplicados': s.allIds.join(', '), Temática: s.tematica, Tipo: type, Título: s.title, Apresentador: s.presenterName, Avaliadores: s.evaluatorNames.join(', '), 'Nº avaliações': s.evalCount, 'Nota média': Number(s.averageScore.toFixed(2)), Comentários: s.comments.join(' | ') }));
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), `${tematica}-${type}`); XLSX.writeFile(wb, `resultados_${tematica}_${type}.xlsx`);
   };
 
@@ -917,6 +921,7 @@ return (
                           <div className="flex flex-col items-end">
                             <span className="text-lg font-bold text-teal-700">{stat.averageScore.toFixed(1)}</span>
                             <span className="text-xs text-slate-400">/ {stat.maxPossible} max</span>
+                            <span className="mt-1 text-xs text-slate-500">{stat.evaluatorNames.join(', ')}</span>
                           </div>
                         ) : (
                           <span className="text-sm text-slate-400 italic">Pendente</span>
