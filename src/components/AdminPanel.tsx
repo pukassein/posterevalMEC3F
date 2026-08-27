@@ -455,8 +455,8 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
     }).sort((a, b) => {
       if (resultsSort === 'id') return a.normalizedId.localeCompare(b.normalizedId, undefined, { numeric: true });
       if (resultsSort === 'poster') return a.presenterName.localeCompare(b.presenterName, 'pt-BR');
-      if (b.evalCount !== a.evalCount) return b.evalCount - a.evalCount;
-      return b.averageScore - a.averageScore;
+      if (b.averageScore !== a.averageScore) return b.averageScore - a.averageScore;
+      return b.evalCount - a.evalCount;
     });
   }, [localWorks, evaluations, localCriteria, localEvaluators, resultsTypeFilter, resultsTematicaFilter, resultsSort]);
 
@@ -836,9 +836,9 @@ return (
               <div className="flex-1">
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Área Temática</label>
                 <div className="flex flex-wrap gap-2">
-                  <button onClick={() => setResultsTematicaFilter('ALL')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${resultsTematicaFilter === 'ALL' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Todas</button>
+                  <button onClick={() => { setResultsTematicaFilter('ALL'); setResultsSort('score'); }} className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${resultsTematicaFilter === 'ALL' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Todas</button>
                   {(Object.keys(TEMATICAS) as Tematica[]).map(t => (
-                    <button key={t} onClick={() => setResultsTematicaFilter(t)} className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${resultsTematicaFilter === t ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{t}</button>
+                    <button key={t} onClick={() => { setResultsTematicaFilter(t); setResultsSort('score'); }} className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${resultsTematicaFilter === t ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{t}</button>
                   ))}
                 </div>
               </div>
