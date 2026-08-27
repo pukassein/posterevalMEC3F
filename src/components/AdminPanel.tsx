@@ -1153,4 +1153,39 @@ return (
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <label className="cursor-pointer inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-bold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors">
-                    <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImportAs
+                    <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImportAssignments} className="hidden" />
+                    {isImportingAssignments ? 'Importando...' : 'Importar planilha'}
+                  </label>
+                  <div className="relative w-full sm:w-64 shrink-0">
+                    <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input type="text" placeholder="Buscar avaliador..." value={searchAssignments} onChange={(e) => setSearchAssignments(e.target.value)} className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-colors" />
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-6">
+                {localEvaluators.length === 0 ? <p className="text-sm text-slate-500 italic">Nenhum avaliador cadastrado.</p> : (
+                  localEvaluators.filter(ev => !searchAssignments.trim() || ev.name.toLowerCase().includes(searchAssignments.toLowerCase())).map(ev => {
+                    const assignedWorks = localAssignments[ev.id] || [];
+                    if (assignedWorks.length === 0) return null;
+                    return <div key={ev.id} className="border border-slate-200 rounded-xl p-4"><h3 className="font-bold text-slate-900">{ev.name}</h3><div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">{assignedWorks.map(workId => { const work = localWorks.find(w => w.id === workId || normalizePosterCode(w.posterId) === normalizePosterCode(workId)); if (!work) return null; return <div key={work.id} className="text-sm p-3 bg-white border border-slate-200 rounded-lg"><span className="text-[10px] font-bold">{work.posterId}</span><div className="font-medium text-slate-900">{work.title}</div><button onClick={() => handleToggleAssignmentFromWork(work.id, ev.id)} className="text-xs text-red-600 mt-2">Remover atribuição</button></div>; })}</div></div>;
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: CRITERIA */}
+        {activeTab === 'criteria' && (
+          <div className="space-y-6"><div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><h2 className="text-xl font-bold text-slate-900">Definições de Critérios</h2><div className="space-y-4 max-w-2xl text-left mt-6">{localCriteria.map(criterion => <div key={criterion.id} className="flex items-center justify-between p-4 border border-slate-200 rounded-xl bg-slate-50"><div><div className="font-bold text-slate-900">{criterion.label}</div><div className="text-xs font-mono text-slate-400 mt-1">ID: {criterion.id}</div></div><button onClick={() => handleRemoveCriterion(criterion.id)} className="text-red-500 p-2"><Trash2 className="w-5 h-5" /></button></div>)}</div><form onSubmit={handleAddCriterion} className="flex gap-3 max-w-2xl mt-8"><input type="text" value={newCriterionLabel} onChange={(e) => setNewCriterionLabel(e.target.value)} placeholder="Ex: Qualidade da Resposta" className="flex-1 px-4 py-3 border border-slate-200 rounded-xl" /><button type="submit" disabled={!newCriterionLabel.trim()} className="bg-slate-900 disabled:bg-slate-300 text-white px-6 py-3 rounded-xl font-bold"><Plus className="w-4 h-4" /></button></form></div></div>
+        )}
+
+        {/* TAB: EVALUATORS */}
+        {activeTab === 'evaluators' && (
+          <div className="space-y-6 text-left"><div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><h2 className="text-xl font-bold text-slate-900">Gerenciar Avaliadores</h2><form onSubmit={handleAddEvaluatorUser} className="flex gap-3 my-6"><input type="text" value={newEvaluatorName} onChange={(e) => setNewEvaluatorName(e.target.value)} placeholder="Nome do Novo Avaliador" className="flex-1 px-4 py-3 border border-slate-200 rounded-xl" /><button type="submit" disabled={!newEvaluatorName.trim()} className="bg-slate-900 disabled:bg-slate-300 text-white px-6 py-3 rounded-xl font-bold"><Plus className="w-4 h-4" /></button></form>{filteredEvaluators.map(ev => <div key={ev.id} className="p-4 border border-slate-200 rounded-xl bg-slate-50 flex justify-between"><span>{ev.name}</span><button onClick={() => handleRemoveEvaluatorUser(ev.id)} className="text-red-500"><Trash2 className="w-5 h-5" /></button></div>)}</div></div>
+        )}
+
+      </main>
+    </div>
+  );
+}
