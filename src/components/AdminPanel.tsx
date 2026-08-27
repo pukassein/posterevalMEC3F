@@ -40,6 +40,8 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const [assignmentCodes, setAssignmentCodes] = useState('');
   const [resultsTematicaFilter, setResultsTematicaFilter] = useState<Tematica | 'ALL'>('ALL');
   const [resultsTypeFilter, setResultsTypeFilter] = useState<'ALL' | 'oral' | 'poster'>('ALL');
+  const [resultsSort, setResultsSort] = useState<'score' | 'poster' | 'id'>('score');
+  const [resultsSearch, setResultsSearch] = useState('');
 
   const [newWorkId, setNewWorkId] = useState('');
   const [newWorkTitle, setNewWorkTitle] = useState('');
@@ -408,8 +410,12 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
       filteredWorks = filteredWorks.filter(w => w.tematica === resultsTematicaFilter);
     }
 
-    return filteredWorks.map(work => {
-      const workEvals = evaluations.filter(e => e.posterId === work.id);
+    const groups = new Map<string, Poster[]>();
+    filteredWorks.forEach(work => { const key = normalizePosterCode(work.posterId); groups.set(key, [...(groups.get(key) || []), work]); });
+    return [...groups.entries()].map(([normalizedId, workGroup]) => {
+      const work = workGroup[0];
+      const workIds = new Set(workGroup.map(item => item.id));
+      const workEvals = evaluations.filter(e => workIds.has(e.posterId));
       const evalCount = workEvals.length;
       
       let totalScore = 0;
@@ -430,19 +436,34 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
       return {
         id: work.id,
         posterId: work.posterId,
+        allIds: workGroup.map(item => item.posterId),
         title: work.title,
         presenterName: work.presenterName,
         type: work.type,
         tematica: work.tematica,
         evalCount,
         averageScore,
-        maxPossible: normalizedMax
+        maxPossible: normalizedMax,
+        comments: workEvals.filter(e => e.generalComments?.trim()).map(e => e.generalComments.trim()),
+        normalizedId
       };
     }).sort((a, b) => {
+      if (resultsSort === 'id') return a.normalizedId.localeCompare(b.normalizedId, undefined, { numeric: true });
+      if (resultsSort === 'poster') return a.presenterName.localeCompare(b.presenterName, 'pt-BR');
       if (b.evalCount !== a.evalCount) return b.evalCount - a.evalCount;
       return b.averageScore - a.averageScore;
     });
-  }, [localWorks, evaluations, localCriteria, resultsTypeFilter, resultsTematicaFilter]);
+  }, [localWorks, evaluations, localCriteria, resultsTypeFilter, resultsTematicaFilter, resultsSort]);
+
+  const visiblePosterStats = useMemo(() => posterStats.filter(stat => {
+    const q = resultsSearch.trim().toLowerCase();
+    return !q || stat.allIds.some(id => id.toLowerCase().includes(q)) || stat.title.toLowerCase().includes(q) || stat.presenterName.toLowerCase().includes(q);
+  }), [posterStats, resultsSearch]);
+
+  const handleExportResults = (type: 'oral' | 'poster', tematica: Tematica) => {
+    const rows = posterStats.filter(s => s.type === type && s.tematica === tematica).map(s => ({ ID: s.posterId, 'IDs duplicados': s.allIds.join(', '), Temática: s.tematica, Tipo: type, Título: s.title, Apresentador: s.presenterName, 'Nº avaliações': s.evalCount, 'Nota média': Number(s.averageScore.toFixed(2)), Comentários: s.comments.join(' | ') }));
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), `${tematica}-${type}`); XLSX.writeFile(wb, `resultados_${tematica}_${type}.xlsx`);
+  };
 
   const renderWorkCardWithAssign = (work: Poster) => {
     const isExpanded = expandedWorkId === work.id;
@@ -819,6 +840,11 @@ return (
             </div>
 
             <div className="overflow-x-auto">
+              <div className="flex flex-wrap gap-2 mb-4">
+                <input value={resultsSearch} onChange={e => setResultsSearch(e.target.value)} placeholder="Buscar ID, título ou apresentador" className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[220px]" />
+                <select value={resultsSort} onChange={e => setResultsSort(e.target.value as typeof resultsSort)} className="border rounded-lg px-3 py-2 text-sm"><option value="score">Ordenar por nota</option><option value="poster">Ordenar por apresentador</option><option value="id">Ordenar por ID</option></select>
+                {(Object.keys(TEMATICAS) as Tematica[]).flatMap(t => (['oral', 'poster'] as const).map(type => <button key={`${t}-${type}`} onClick={() => handleExportResults(type, t)} className="px-2 py-2 text-xs font-bold text-teal-700 border border-teal-200 rounded-lg">Excel {t} {type}</button>))}
+              </div>
               <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-bold">
@@ -828,11 +854,12 @@ return (
                     <th className="p-4">Título & Apresentador</th>
                     <th className="p-4 w-32 text-center">Avaliações</th>
                     <th className="p-4 w-32 text-right">Nota Média</th>
+                    <th className="p-4 w-64">Comentários</th>
                     <th className="p-4 rounded-tr-xl w-32 text-right">Ação</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {posterStats.map((stat, idx) => (
+                  {visiblePosterStats.map((stat, idx) => (
                     <tr key={stat.id} className="hover:bg-slate-50 transition-colors">
                       <td className="p-4 font-bold text-slate-400">
                         {idx === 0 && stat.evalCount > 0 ? (
@@ -845,7 +872,7 @@ return (
                           `#${idx + 1}`
                         )}
                       </td>
-                      <td className="p-4 text-sm font-mono font-bold text-slate-600">{stat.posterId}</td>
+                      <td className="p-4 text-sm font-mono font-bold text-slate-600">{stat.posterId}{stat.allIds.length > 1 && <div className="text-[10px] text-amber-600">Também: {stat.allIds.filter(id => id !== stat.posterId).join(', ')}</div>}</td>
                       <td className="p-4">
                         <div className="text-xs font-bold uppercase text-slate-900">{stat.type === 'oral' ? 'Oral' : 'Pôster'}</div>
                         <div className="text-xs text-slate-500 font-medium">{stat.tematica}</div>
@@ -869,6 +896,7 @@ return (
                           <span className="text-sm text-slate-400 italic">Pendente</span>
                         )}
                       </td>
+                      <td className="p-4 text-xs text-slate-600">{stat.comments.length ? stat.comments.map((c, i) => <div key={i} className="italic mb-1">“{c}”</div>) : '—'}</td>
                       <td className="p-4 text-right">
                         {stat.evalCount > 0 && (
                           <div className="relative inline-flex items-center gap-2">
@@ -1125,415 +1153,4 @@ return (
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <label className="cursor-pointer inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-bold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors">
-                    <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImportAssignments} className="hidden" />
-                    {isImportingAssignments ? 'Importando...' : 'Importar planilha'}
-                  </label>
-                  <div className="relative w-full sm:w-64 shrink-0">
-                    <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Buscar avaliador..." 
-                      value={searchAssignments} 
-                      onChange={(e) => setSearchAssignments(e.target.value)} 
-                      className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-colors"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-6">
-                {localEvaluators.length === 0 ? (
-                  <p className="text-sm text-slate-500 italic">Nenhum avaliador cadastrado.</p>
-                ) : (
-                  localEvaluators
-                  .filter(ev => !searchAssignments.trim() || ev.name.toLowerCase().includes(searchAssignments.toLowerCase()))
-                  .map(ev => {
-                    const assignedWorks = localAssignments[ev.id] || [];
-                    if (assignedWorks.length === 0) return null;
-                    return (
-                      <div key={ev.id} className="border border-slate-200 rounded-xl overflow-visible">
-                        <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
-                          <h3 className="font-bold text-slate-900">{ev.name}</h3>
-                          <span className="text-xs font-bold bg-teal-100 text-teal-800 px-2 py-1 rounded-md">{assignedWorks.length} Trabalho{assignedWorks.length !== 1 ? 's' : ''}</span>
-                        </div>
-                        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                          {assignedWorks.map(workId => {
-                            const work = localWorks.find(w => w.id === workId || normalizePosterCode(w.posterId) === normalizePosterCode(workId));
-                            if (!work) return null;
-                            return (
-                              <div
-                                key={work.id}
-                                onClick={() => {
-                                  setAssignmentWorkId(assignmentWorkId === work.id ? null : work.id);
-                                  setSearchAssignmentEvaluators('');
-                                }}
-                                className={`text-sm p-3 bg-white border rounded-lg shadow-sm flex items-start gap-2 relative group pr-8 cursor-pointer transition-colors ${assignmentWorkId === work.id ? 'border-teal-400 ring-1 ring-teal-200' : 'border-slate-200 hover:border-teal-300'}`}
-                                title="Clique para alterar os avaliadores"
-                              >
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase mt-0.5 shrink-0 ${work.type === 'poster' ? 'bg-indigo-100 text-indigo-700' : 'bg-orange-100 text-orange-700'}`}>
-                                  {work.posterId}
-                                </span>
-                                <div className="flex-1">
-                                  <div className="font-medium text-slate-900 leading-tight">{work.title}</div>
-                                  <div className="text-xs text-teal-700 mt-2 font-semibold">Clique para alterar avaliadores</div>
-                                </div>
-                                <button
-                                  onClick={(event) => { event.stopPropagation(); handleToggleAssignmentFromWork(work.id, ev.id); }}
-                                  className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors opacity-0 group-hover:opacity-100"
-                                  title="Remover atribuição"
-                                >
-                                  <X className="w-4 h-4" />
-                                </button>
-                                {assignmentWorkId === work.id && (
-                                  <div className="absolute left-0 right-0 top-full z-20 mt-2 p-3 bg-white border border-slate-200 rounded-xl shadow-lg" onClick={(event) => event.stopPropagation()}>
-                                    <p className="text-xs font-bold text-slate-700 mb-2">Avaliadores deste trabalho</p>
-                                    <div className="relative mb-3">
-                                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                      <input
-                                        autoFocus
-                                        value={searchAssignmentEvaluators}
-                                        onChange={(event) => setSearchAssignmentEvaluators(event.target.value)}
-                                        onKeyDown={(event) => {
-                                          if (event.key === 'Escape') {
-                                            setSearchAssignmentEvaluators('');
-                                            setAssignmentWorkId(null);
-                                          }
-                                        }}
-                                        placeholder="Buscar avaliador..."
-                                        className="w-full pl-9 pr-9 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
-                                      />
-                                      {searchAssignmentEvaluators && (
-                                        <button
-                                          type="button"
-                                          onClick={() => setSearchAssignmentEvaluators('')}
-                                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 rounded"
-                                          title="Limpar busca"
-                                        >
-                                          <X className="w-3.5 h-3.5" />
-                                        </button>
-                                      )}
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
-                                      {localEvaluators
-                                        .filter(otherEvaluator => !searchAssignmentEvaluators.trim() || otherEvaluator.name.toLocaleLowerCase().includes(searchAssignmentEvaluators.toLocaleLowerCase()))
-                                        .map(otherEvaluator => {
-                                        const isAssigned = (localAssignments[otherEvaluator.id] || []).some(assignment => {
-                                          const assignedWork = localWorks.find(item => item.id === assignment);
-                                          return assignment === work.id || normalizePosterCode(assignedWork?.posterId || assignment) === normalizePosterCode(work.posterId);
-                                        });
-                                        return (
-                                          <button
-                                            key={otherEvaluator.id}
-                                            onClick={() => handleToggleAssignmentFromWork(work.id, otherEvaluator.id)}
-                                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors ${isAssigned ? 'bg-teal-50 border-teal-400 text-teal-900' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                                          >
-                                            {isAssigned ? '✓ ' : ''}{otherEvaluator.name}
-                                          </button>
-                                        );
-                                        })}
-                                      {localEvaluators.filter(otherEvaluator => !searchAssignmentEvaluators.trim() || otherEvaluator.name.toLocaleLowerCase().includes(searchAssignmentEvaluators.toLocaleLowerCase())).length === 0 && (
-                                        <p className="text-xs text-slate-500 italic py-2">Nenhum avaliador encontrado.</p>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-                {Object.keys(localAssignments).every(evId => (localAssignments[evId] || []).length === 0) && localEvaluators.length > 0 && (
-                   <p className="text-sm text-slate-500 italic">Nenhum trabalho atribuído ainda.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-{/* TAB: CRITERIA */}
-        {activeTab === 'criteria' && (
-          <div className="space-y-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-slate-100 text-left gap-4 sm:gap-6">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Definições de Critérios</h2>
-                  <p className="text-sm text-slate-500 mt-1">
-                    Esses critérios aparecerão nos formulários de todos os avaliadores.
-                    Você não poderá editar uma nota existente se o critério for deletado.
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto mt-4 sm:mt-0">
-                  
-                </div>
-              </div>
-
-              <div className="space-y-4 max-w-2xl text-left">
-                {localCriteria.map(criterion => (
-                  <div key={criterion.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-slate-200 rounded-xl bg-slate-50">
-                    <div className="mb-2 sm:mb-0">
-                      <div className="font-bold text-slate-900">{criterion.label}</div>
-                      <div className="text-xs font-mono text-slate-400 mt-1">ID: {criterion.id}</div>
-                    </div>
-                    <button 
-                      onClick={() => handleRemoveCriterion(criterion.id)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors flex items-center justify-center self-start sm:self-auto shrink-0"
-                      title="Remover critério"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-8 pt-6 border-t border-slate-100 text-left">
-                <h3 className="text-sm font-bold text-slate-900 mb-3 uppercase tracking-wider">Adicionar Novo Critério</h3>
-                <form onSubmit={handleAddCriterion} className="flex flex-col md:flex-row gap-3 max-w-2xl">
-                  <input
-                    type="text"
-                    value={newCriterionLabel}
-                    onChange={(e) => setNewCriterionLabel(e.target.value)}
-                    placeholder="Ex: Qualidade da Resposta"
-                    className="flex-1 px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-slate-900 transition-colors"
-                  />
-                  <button type="submit" disabled={!newCriterionLabel.trim()} className="bg-slate-900 disabled:bg-slate-300 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center shadow-sm w-full md:w-auto">
-                    <Plus className="w-4 h-4 mr-2" />
-                    <span>Adicionar</span>
-                  </button>
-                </form>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        
-        {/* TAB: EVALUATORS */}
-        {activeTab === 'evaluators' && (
-          <div className="space-y-6 text-left">
-            <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-slate-100 gap-4">
-                
-                <div className="flex items-center gap-4">
-                  <h2 className="text-xl font-bold text-slate-900 flex items-center">
-                    <UserPlus className="w-5 h-5 mr-3 text-teal-600 shrink-0" />
-                    Gerenciar Avaliadores
-                  </h2>
-                  {localEvaluators.length > 0 && (
-                    <div className="relative ml-auto">
-                      <button onClick={() => setEvaluatorSettingsOpen(open => !open)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
-                        <Settings2 className="w-4 h-4" /> Opções
-                      </button>
-                      {evaluatorSettingsOpen && (
-                        <div className="absolute right-0 top-11 z-10 w-56 p-2 bg-white border border-slate-200 rounded-xl shadow-lg space-y-1">
-                          <button onClick={handleExportEvaluators} className="flex items-center gap-2 w-full p-3 text-left text-sm font-bold text-slate-700 rounded-lg hover:bg-slate-50"><Download className="w-4 h-4" /> Exportar Excel</button>
-                          <button onClick={handleResetEvaluators} className="flex items-center gap-2 w-full p-3 text-left text-sm font-bold text-red-700 rounded-lg hover:bg-red-50"><Trash2 className="w-4 h-4" /> Limpar avaliadores</button>
-                          <button onClick={() => handlePrintEvaluators(filteredEvaluators)} className="flex items-center gap-2 w-full p-3 text-left text-sm font-bold text-slate-700 rounded-lg hover:bg-slate-50"><Printer className="w-4 h-4" /> Imprimir todos</button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                
-              </div>
-
-              <form onSubmit={handleAddEvaluatorUser} className="flex flex-col gap-3 mb-8 max-w-2xl bg-slate-50 p-4 border border-slate-200 rounded-xl">
-                <div className="flex flex-col md:flex-row gap-3">
-                  <input
-                    type="text"
-                    value={newEvaluatorName}
-                    onChange={(e) => setNewEvaluatorName(e.target.value)}
-                    placeholder="Nome do Novo Avaliador"
-                    className="flex-1 px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-slate-900 transition-colors"
-                  />
-                  <button type="submit" disabled={!newEvaluatorName.trim()} className="bg-slate-900 disabled:bg-slate-300 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center shadow-sm w-full md:w-auto">
-                    <Plus className="w-4 h-4 mr-2" />
-                    <span>Criar Avaliador</span>
-                  </button>
-                </div>
-                
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm font-bold text-slate-700">Áreas de Atuação (Recomendação)</span>
-                  <div className="flex flex-wrap gap-2">
-                    {(Object.keys(TEMATICAS) as Tematica[]).map(t => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => {
-                          setNewEvaluatorAreas(prev => 
-                            prev.includes(t) ? prev.filter(area => area !== t) : [...prev, t]
-                          );
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                          newEvaluatorAreas.includes(t) 
-                            ? 'bg-teal-50 border-teal-400 text-teal-900 shadow-sm' 
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </form>
-
-              <div className="relative mb-5 max-w-2xl">
-                <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchEvaluators}
-                  onChange={(e) => setSearchEvaluators(e.target.value)}
-                  placeholder="Buscar avaliador por nome..."
-                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-slate-900 transition-colors"
-                />
-              </div>
-
-              <div className="space-y-3">
-                {localEvaluators.length === 0 ? (
-                  <p className="text-slate-500 text-sm italic">Nenhum avaliador cadastrado. Crie um acima.</p>
-                ) : filteredEvaluators.length === 0 ? (
-                  <p className="text-slate-500 text-sm italic">Nenhum avaliador encontrado.</p>
-                ) : (
-                  filteredEvaluators.map(ev => (
-                    <div key={ev.id} className="flex flex-col sm:flex-row sm:items-start justify-between p-4 border border-slate-200 rounded-xl bg-slate-50 gap-4">
-                      {editingEvaluatorId === ev.id ? (
-                        <div className="flex-1 flex flex-col gap-3">
-                          <input
-                            type="text"
-                            value={editEvaluatorName}
-                            onChange={(e) => setEditEvaluatorName(e.target.value)}
-                            className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none text-slate-900 transition-colors w-full sm:max-w-md"
-                          />
-                          <div className="flex flex-wrap gap-2">
-                            {(Object.keys(TEMATICAS) as Tematica[]).map(t => (
-                              <button
-                                key={t}
-                                type="button"
-                                onClick={() => {
-                                  setEditEvaluatorAreas(prev => 
-                                    prev.includes(t) ? prev.filter(area => area !== t) : [...prev, t]
-                                  );
-                                }}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                                  editEvaluatorAreas.includes(t) 
-                                    ? 'bg-teal-50 border-teal-400 text-teal-900 shadow-sm' 
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                                }`}
-                              >
-                                {t}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center text-teal-700 font-mono font-bold text-lg shadow-sm border border-teal-200 shrink-0">
-                            {ev.accessCode}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <div className="font-bold text-slate-900">{ev.name}</div>
-                              <span className="text-xs font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded-md">
-                                {(localAssignments[ev.id] || []).length} trabalho(s) atribuído(s)
-                              </span>
-                            </div>
-                            <div className="text-xs font-mono text-slate-500 mt-0.5">Código de Acesso: {ev.accessCode}</div>
-                            {ev.areas && ev.areas.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {ev.areas.map(area => (
-                                  <span key={area} className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700">
-                                    {area}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center gap-2 shrink-0">
-                        {editingEvaluatorId === ev.id ? (
-                          <>
-                            <button 
-                              onClick={() => handleSaveEvaluator(ev.id)}
-                              className="text-white bg-teal-600 hover:bg-teal-700 p-2 rounded-lg transition-colors flex items-center justify-center"
-                              title="Salvar"
-                            >
-                              <Save className="w-5 h-5" />
-                            </button>
-                            <button 
-                              onClick={() => setEditingEvaluatorId(null)}
-                              className="text-slate-500 hover:text-slate-900 hover:bg-slate-200 p-2 rounded-lg transition-colors flex items-center justify-center"
-                              title="Cancelar"
-                            >
-                              <X className="w-5 h-5" />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => { setAssignmentEditorId(assignmentEditorId === ev.id ? null : ev.id); setAssignmentCodes(''); }}
-                              className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 p-2 rounded-lg transition-colors flex items-center justify-center"
-                              title="Atribuir trabalhos por código"
-                            >
-                              <Tag className="w-5 h-5" />
-                            </button>
-                            <button 
-                              onClick={() => handlePrintEvaluators([ev])}
-                              className="text-slate-500 hover:text-slate-900 hover:bg-slate-200 p-2 rounded-lg transition-colors flex items-center justify-center"
-                              title="Imprimir guia do avaliador"
-                            >
-                              <Printer className="w-5 h-5" />
-                            </button>
-                            <button 
-                              onClick={() => handleEditEvaluatorClick(ev)}
-                              className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 p-2 rounded-lg transition-colors flex items-center justify-center"
-                              title="Editar avaliador"
-                            >
-                              <Settings2 className="w-5 h-5" />
-                            </button>
-                            <button 
-                              onClick={() => handleRemoveEvaluatorUser(ev.id)}
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors flex items-center justify-center"
-                              title="Remover avaliador"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-
-                      {assignmentEditorId === ev.id && editingEvaluatorId !== ev.id && (
-                        <div className="w-full sm:w-80 flex flex-col gap-2 sm:order-3">
-                          <textarea
-                            value={assignmentCodes}
-                            onChange={(e) => setAssignmentCodes(e.target.value)}
-                            placeholder="Cole os códigos: ENS-092, ENS-081, SMA-025"
-                            rows={3}
-                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none text-slate-900 resize-none"
-                          />
-                          <button
-                            onClick={() => handleAssignPastedCodes(ev.id)}
-                            disabled={!assignmentCodes.trim()}
-                            className="bg-teal-600 disabled:bg-slate-300 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-teal-700"
-                          >
-                            Atribuir códigos
-                          </button>
-                        </div>
-                      )}
-
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-
-      </main>
-    </div>
-  );
-}
+                    <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImportAs
