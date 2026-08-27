@@ -42,6 +42,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const [resultsTypeFilter, setResultsTypeFilter] = useState<'ALL' | 'oral' | 'poster'>('ALL');
   const [resultsSort, setResultsSort] = useState<'score' | 'poster' | 'id'>('score');
   const [resultsSearch, setResultsSearch] = useState('');
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   const [newWorkId, setNewWorkId] = useState('');
   const [newWorkTitle, setNewWorkTitle] = useState('');
@@ -843,7 +844,32 @@ return (
               <div className="flex flex-wrap gap-2 mb-4">
                 <input value={resultsSearch} onChange={e => setResultsSearch(e.target.value)} placeholder="Buscar ID, título ou apresentador" className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[220px]" />
                 <select value={resultsSort} onChange={e => setResultsSort(e.target.value as typeof resultsSort)} className="border rounded-lg px-3 py-2 text-sm"><option value="score">Ordenar por nota</option><option value="poster">Ordenar por apresentador</option><option value="id">Ordenar por ID</option></select>
-                {(Object.keys(TEMATICAS) as Tematica[]).flatMap(t => (['oral', 'poster'] as const).map(type => <button key={`${t}-${type}`} onClick={() => handleExportResults(type, t)} className="px-2 py-2 text-xs font-bold text-teal-700 border border-teal-200 rounded-lg">Excel {t} {type}</button>))}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setExportMenuOpen(open => !open)}
+                    className="inline-flex items-center gap-2 px-3 py-2 text-sm font-bold text-teal-700 border border-teal-200 rounded-lg hover:bg-teal-50"
+                  >
+                    <Download className="w-4 h-4" />
+                    Baixar Excel
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  {exportMenuOpen && (
+                    <div className="absolute right-0 top-11 z-20 w-64 p-2 bg-white border border-slate-200 rounded-xl shadow-lg">
+                      <p className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500">Escolha o arquivo</p>
+                      {(Object.keys(TEMATICAS) as Tematica[]).flatMap(t => (['oral', 'poster'] as const).map(type => (
+                        <button
+                          key={`${t}-${type}`}
+                          type="button"
+                          onClick={() => { handleExportResults(type, t); setExportMenuOpen(false); }}
+                          className="block w-full px-3 py-2 text-left text-sm font-semibold text-slate-700 rounded-lg hover:bg-teal-50"
+                        >
+                          {t} — {type === 'oral' ? 'Comunicação Oral' : 'Pôsteres'}
+                        </button>
+                      )))}
+                    </div>
+                  )}
+                </div>
               </div>
               <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
