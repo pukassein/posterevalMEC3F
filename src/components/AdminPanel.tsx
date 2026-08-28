@@ -245,6 +245,8 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   };
 
   const [printEvaluatorsList, setPrintEvaluatorsList] = useState<Evaluator[] | null>(null);
+  const [podiumSelection, setPodiumSelection] = useState<string[]>([]);
+  const [showPodiumPrint, setShowPodiumPrint] = useState(false);
   const [evaluationActionId, setEvaluationActionId] = useState<string | null>(null);
   const [workSettingsOpen, setWorkSettingsOpen] = useState(false);
   const [evaluatorSettingsOpen, setEvaluatorSettingsOpen] = useState(false);
@@ -453,6 +455,9 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
         normalizedId
       };
     }).sort((a, b) => {
+      // Always keep works without evaluations at the end of the results list.
+      if (a.evalCount === 0 && b.evalCount > 0) return 1;
+      if (a.evalCount > 0 && b.evalCount === 0) return -1;
       if (resultsSort === 'id') return a.normalizedId.localeCompare(b.normalizedId, undefined, { numeric: true });
       if (resultsSort === 'poster') return a.presenterName.localeCompare(b.presenterName, 'pt-BR');
       if (b.averageScore !== a.averageScore) return b.averageScore - a.averageScore;
@@ -464,6 +469,8 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
     const q = resultsSearch.trim().toLowerCase();
     return !q || stat.allIds.some(id => id.toLowerCase().includes(q)) || stat.title.toLowerCase().includes(q) || stat.presenterName.toLowerCase().includes(q);
   }), [posterStats, resultsSearch]);
+
+  const selectedPodiumWorks = visiblePosterStats.filter(stat => podiumSelection.includes(stat.id));
 
   const handleExportResults = (type: 'oral' | 'poster', tematica: Tematica) => {
     const rows = posterStats.filter(s => s.type === type && s.tematica === tematica).map(s => ({ ID: s.posterId, 'IDs duplicados': s.allIds.join(', '), Temática: s.tematica, Tipo: type, Título: s.title, Apresentador: s.presenterName, Avaliadores: s.evaluatorNames.join(', '), 'Nº avaliações': s.evalCount, 'Nota média': Number(s.averageScore.toFixed(2)), Comentários: s.comments.join(' | ') }));
@@ -623,6 +630,22 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
 
 
   
+  if (showPodiumPrint) {
+    return (
+      <div className="min-h-screen bg-white text-slate-900 p-8 print:p-4">
+        <div className="print:hidden flex gap-3 mb-6">
+          <button onClick={() => window.print()} className="px-5 py-2 bg-teal-600 text-white rounded-lg font-bold"><Printer className="w-4 h-4 inline mr-2" />Imprimir / guardar imagem</button>
+          <button onClick={() => setShowPodiumPrint(false)} className="px-5 py-2 border rounded-lg font-bold">Voltar</button>
+        </div>
+        <h1 className="text-4xl font-black text-center mb-2">Podium dos trabalhos</h1>
+        <p className="text-center text-slate-500 mb-10">{resultsTematicaFilter === 'ALL' ? 'Todas as áreas' : resultsTematicaFilter}</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end max-w-5xl mx-auto">
+          {selectedPodiumWorks.map((stat, index) => <div key={stat.id} className={`text-center rounded-2xl p-6 border-2 ${index === 0 ? 'md:order-2 border-amber-400 bg-amber-50 md:-translate-y-6' : index === 1 ? 'md:order-1 border-slate-300 bg-slate-50' : 'md:order-3 border-orange-300 bg-orange-50'}`}><div className="text-5xl font-black mb-4">{index + 1}º</div><div className="font-bold text-xl">{stat.title}</div><div className="text-slate-600 mt-1">{stat.presenterName}</div><div className="text-4xl font-black text-teal-700 mt-5">{stat.averageScore.toFixed(1)}</div><div className="text-sm text-slate-500 mt-2">{stat.evaluatorNames.join(', ')}</div><div className="text-xs font-mono text-slate-500 mt-3">{stat.posterId}</div></div>)}
+        </div>
+      </div>
+    );
+  }
+
   if (printEvaluatorsList) {
     return (
       <div className="bg-white text-black p-8 print:p-2 min-h-screen w-full">
@@ -848,6 +871,7 @@ return (
               <div className="flex flex-wrap gap-2 mb-4">
                 <input value={resultsSearch} onChange={e => setResultsSearch(e.target.value)} placeholder="Buscar ID, título ou apresentador" className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[220px]" />
                 <select value={resultsSort} onChange={e => setResultsSort(e.target.value as typeof resultsSort)} className="border rounded-lg px-3 py-2 text-sm"><option value="score">Ordenar por nota</option><option value="poster">Ordenar por apresentador</option><option value="id">Ordenar por ID</option></select>
+                <button type="button" disabled={selectedPodiumWorks.length === 0} onClick={() => setShowPodiumPrint(true)} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-bold text-white bg-indigo-600 disabled:bg-slate-300 rounded-lg hover:bg-indigo-700"><Printer className="w-4 h-4" />Podium ({selectedPodiumWorks.length})</button>
                 <div className="relative">
                   <button
                     type="button"
@@ -878,6 +902,7 @@ return (
               <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-bold">
+                    <th className="p-4 w-12">Sel.</th>
                     <th className="p-4 rounded-tl-xl w-24">Rank</th>
                     <th className="p-4 w-32">ID</th>
                     <th className="p-4 w-32">Tipo / Área</th>
@@ -891,6 +916,7 @@ return (
                 <tbody className="divide-y divide-slate-100">
                   {visiblePosterStats.map((stat, idx) => (
                     <tr key={stat.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-4"><input type="checkbox" checked={podiumSelection.includes(stat.id)} disabled={podiumSelection.length >= 3 && !podiumSelection.includes(stat.id)} onChange={() => setPodiumSelection(current => current.includes(stat.id) ? current.filter(id => id !== stat.id) : [...current, stat.id])} aria-label={`Selecionar ${stat.title} para o podium`} /></td>
                       <td className="p-4 font-bold text-slate-400">
                         {idx === 0 && stat.evalCount > 0 ? (
                           <span className="flex items-center text-amber-500"><Award className="w-6 h-6 mr-1 fill-amber-100" /> 1º</span>
