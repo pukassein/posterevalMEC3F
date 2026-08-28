@@ -638,9 +638,12 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
           <button onClick={() => setShowPodiumPrint(false)} className="px-5 py-2 border rounded-lg font-bold">Voltar</button>
         </div>
         <h1 className="text-4xl font-black text-center mb-2">Podium dos trabalhos</h1>
-        <p className="text-center text-slate-500 mb-10">{resultsTematicaFilter === 'ALL' ? 'Todas as áreas' : resultsTematicaFilter}</p>
+        <p className="text-center text-slate-600 font-bold mb-10">
+          {resultsTypeFilter === 'poster' ? 'Pôsteres' : resultsTypeFilter === 'oral' ? 'Comunicação Oral' : 'Pôsteres e Comunicação Oral'}
+          {' · '}{resultsTematicaFilter === 'ALL' ? 'Todas as áreas' : resultsTematicaFilter}
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end max-w-5xl mx-auto">
-          {selectedPodiumWorks.map((stat, index) => <div key={stat.id} className={`text-center rounded-2xl p-6 border-2 ${index === 0 ? 'md:order-2 border-amber-400 bg-amber-50 md:-translate-y-6' : index === 1 ? 'md:order-1 border-slate-300 bg-slate-50' : 'md:order-3 border-orange-300 bg-orange-50'}`}><div className="text-5xl font-black mb-4">{index + 1}º</div><div className="font-bold text-xl">{stat.title}</div><div className="text-slate-600 mt-1">{stat.presenterName}</div><div className="text-sm text-slate-500 mt-5">{stat.evaluatorNames.join(', ')}</div><div className="text-xs font-mono text-slate-500 mt-3">{stat.posterId}</div></div>)}
+          {selectedPodiumWorks.map((stat, index) => <div key={stat.id} className={`text-center rounded-2xl p-6 border-2 ${index === 0 ? 'md:order-2 border-amber-400 bg-amber-50 md:-translate-y-6' : index === 1 ? 'md:order-1 border-slate-300 bg-slate-50' : 'md:order-3 border-orange-300 bg-orange-50'}`}><div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-3">{stat.type === 'poster' ? 'Pôster' : 'Comunicação Oral'}</div><div className="text-5xl font-black mb-4">{index + 1}º</div><div className="font-bold text-xl">{stat.title}</div><div className="text-slate-600 mt-1">{stat.presenterName}</div><div className="text-xs font-mono text-slate-500 mt-5">{stat.posterId}</div></div>)}
         </div>
       </div>
     );
