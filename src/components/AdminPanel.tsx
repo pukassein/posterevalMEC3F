@@ -247,6 +247,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const [printEvaluatorsList, setPrintEvaluatorsList] = useState<Evaluator[] | null>(null);
   const [podiumSelection, setPodiumSelection] = useState<string[]>([]);
   const [showPodiumPrint, setShowPodiumPrint] = useState(false);
+  const [showAllPodiumsPrint, setShowAllPodiumsPrint] = useState(false);
   const [evaluationActionId, setEvaluationActionId] = useState<string | null>(null);
   const [workSettingsOpen, setWorkSettingsOpen] = useState(false);
   const [evaluatorSettingsOpen, setEvaluatorSettingsOpen] = useState(false);
@@ -472,6 +473,23 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
 
   const selectedPodiumWorks = visiblePosterStats.filter(stat => podiumSelection.includes(stat.id));
 
+  const allPodiumGroups = (['poster', 'oral'] as const).flatMap(type =>
+    (Object.keys(TEMATICAS) as Tematica[]).map(tematica => ({
+      type,
+      tematica,
+      works: posterStats.filter(stat => stat.type === type && stat.tematica === tematica && stat.evalCount > 0).slice(0, 3)
+    })).filter(group => group.works.length > 0)
+  );
+
+  const copyAllPodiums = async () => {
+    const text = allPodiumGroups.map(group => [
+      `${group.type === 'poster' ? 'PÔSTERES' : 'COMUNICAÇÃO ORAL'} — ${group.tematica}`,
+      ...group.works.map((work, index) => `${index + 1}º — ${work.title} — ${work.presenterName} (${work.posterId}) — Nota: ${work.averageScore.toFixed(1)}`)
+    ].join('\n')).join('\n\n');
+    await navigator.clipboard.writeText(text);
+    alert('Resultados dos pódios copiados.');
+  };
+
   const handleExportResults = (type: 'oral' | 'poster', tematica: Tematica) => {
     const rows = posterStats.filter(s => s.type === type && s.tematica === tematica).map(s => ({ ID: s.posterId, 'IDs duplicados': s.allIds.join(', '), Temática: s.tematica, Tipo: type, Título: s.title, Apresentador: s.presenterName, Avaliadores: s.evaluatorNames.join(', '), 'Nº avaliações': s.evalCount, 'Nota média': Number(s.averageScore.toFixed(2)), Comentários: s.comments.join(' | ') }));
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), `${tematica}-${type}`); XLSX.writeFile(wb, `resultados_${tematica}_${type}.xlsx`);
@@ -630,6 +648,16 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
 
 
   
+  if (showAllPodiumsPrint) {
+    return (
+      <div className="min-h-screen bg-white text-slate-900 p-8 print:p-4">
+        <div className="print:hidden flex gap-3 mb-6"><button onClick={() => window.print()} className="px-5 py-2 bg-teal-600 text-white rounded-lg font-bold"><Printer className="w-4 h-4 inline mr-2" />Imprimir documento</button><button onClick={() => setShowAllPodiumsPrint(false)} className="px-5 py-2 border rounded-lg font-bold">Voltar</button></div>
+        <h1 className="text-4xl font-black text-center mb-10">Resultados dos Pódios</h1>
+        <div className="space-y-10 max-w-5xl mx-auto">{allPodiumGroups.map(group => <section key={`${group.type}-${group.tematica}`}><h2 className="text-2xl font-black border-b-2 border-slate-300 pb-2 mb-4">{group.type === 'poster' ? 'Pôsteres' : 'Comunicação Oral'} — {group.tematica}</h2><div className="grid grid-cols-1 sm:grid-cols-3 gap-4">{group.works.map((work, index) => <div key={work.id} className="rounded-xl border border-slate-300 p-4"><div className="text-lg font-black">{index + 1}º</div><div className="font-bold mt-2">{work.title}</div><div className="text-sm text-slate-600">{work.presenterName}</div><div className="text-xs font-mono text-slate-500 mt-2">{work.posterId}</div><div className="font-bold text-teal-700 mt-2">Nota: {work.averageScore.toFixed(1)}</div></div>)}</div></section>)}</div>
+      </div>
+    );
+  }
+
   if (showPodiumPrint) {
     return (
       <div className="min-h-screen bg-white text-slate-900 p-8 print:p-4">
@@ -875,6 +903,8 @@ return (
                 <input value={resultsSearch} onChange={e => setResultsSearch(e.target.value)} placeholder="Buscar ID, título ou apresentador" className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[220px]" />
                 <select value={resultsSort} onChange={e => setResultsSort(e.target.value as typeof resultsSort)} className="border rounded-lg px-3 py-2 text-sm"><option value="score">Ordenar por nota</option><option value="poster">Ordenar por apresentador</option><option value="id">Ordenar por ID</option></select>
                 <button type="button" disabled={selectedPodiumWorks.length === 0} onClick={() => setShowPodiumPrint(true)} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-bold text-white bg-indigo-600 disabled:bg-slate-300 rounded-lg hover:bg-indigo-700"><Printer className="w-4 h-4" />Podium ({selectedPodiumWorks.length}/3)</button>
+                <button type="button" onClick={copyAllPodiums} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-bold text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50"><FileText className="w-4 h-4" />Copiar todos</button>
+                <button type="button" disabled={allPodiumGroups.length === 0} onClick={() => setShowAllPodiumsPrint(true)} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-bold text-white bg-slate-800 disabled:bg-slate-300 rounded-lg hover:bg-slate-900"><Printer className="w-4 h-4" />Documento completo</button>
                 <div className="relative">
                   <button
                     type="button"
