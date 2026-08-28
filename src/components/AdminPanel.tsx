@@ -640,7 +640,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
         <h1 className="text-4xl font-black text-center mb-2">Podium dos trabalhos</h1>
         <p className="text-center text-slate-500 mb-10">{resultsTematicaFilter === 'ALL' ? 'Todas as áreas' : resultsTematicaFilter}</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end max-w-5xl mx-auto">
-          {selectedPodiumWorks.map((stat, index) => <div key={stat.id} className={`text-center rounded-2xl p-6 border-2 ${index === 0 ? 'md:order-2 border-amber-400 bg-amber-50 md:-translate-y-6' : index === 1 ? 'md:order-1 border-slate-300 bg-slate-50' : 'md:order-3 border-orange-300 bg-orange-50'}`}><div className="text-5xl font-black mb-4">{index + 1}º</div><div className="font-bold text-xl">{stat.title}</div><div className="text-slate-600 mt-1">{stat.presenterName}</div><div className="text-4xl font-black text-teal-700 mt-5">{stat.averageScore.toFixed(1)}</div><div className="text-sm text-slate-500 mt-2">{stat.evaluatorNames.join(', ')}</div><div className="text-xs font-mono text-slate-500 mt-3">{stat.posterId}</div></div>)}
+          {selectedPodiumWorks.map((stat, index) => <div key={stat.id} className={`text-center rounded-2xl p-6 border-2 ${index === 0 ? 'md:order-2 border-amber-400 bg-amber-50 md:-translate-y-6' : index === 1 ? 'md:order-1 border-slate-300 bg-slate-50' : 'md:order-3 border-orange-300 bg-orange-50'}`}><div className="text-5xl font-black mb-4">{index + 1}º</div><div className="font-bold text-xl">{stat.title}</div><div className="text-slate-600 mt-1">{stat.presenterName}</div><div className="text-sm text-slate-500 mt-5">{stat.evaluatorNames.join(', ')}</div><div className="text-xs font-mono text-slate-500 mt-3">{stat.posterId}</div></div>)}
         </div>
       </div>
     );
@@ -871,7 +871,7 @@ return (
               <div className="flex flex-wrap gap-2 mb-4">
                 <input value={resultsSearch} onChange={e => setResultsSearch(e.target.value)} placeholder="Buscar ID, título ou apresentador" className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[220px]" />
                 <select value={resultsSort} onChange={e => setResultsSort(e.target.value as typeof resultsSort)} className="border rounded-lg px-3 py-2 text-sm"><option value="score">Ordenar por nota</option><option value="poster">Ordenar por apresentador</option><option value="id">Ordenar por ID</option></select>
-                <button type="button" disabled={selectedPodiumWorks.length === 0} onClick={() => setShowPodiumPrint(true)} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-bold text-white bg-indigo-600 disabled:bg-slate-300 rounded-lg hover:bg-indigo-700"><Printer className="w-4 h-4" />Podium ({selectedPodiumWorks.length})</button>
+                <button type="button" disabled={selectedPodiumWorks.length === 0} onClick={() => setShowPodiumPrint(true)} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-bold text-white bg-indigo-600 disabled:bg-slate-300 rounded-lg hover:bg-indigo-700"><Printer className="w-4 h-4" />Podium ({selectedPodiumWorks.length}/3)</button>
                 <div className="relative">
                   <button
                     type="button"
@@ -916,7 +916,7 @@ return (
                 <tbody className="divide-y divide-slate-100">
                   {visiblePosterStats.map((stat, idx) => (
                     <tr key={stat.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="p-4"><input type="checkbox" checked={podiumSelection.includes(stat.id)} disabled={podiumSelection.length >= 3 && !podiumSelection.includes(stat.id)} onChange={() => setPodiumSelection(current => current.includes(stat.id) ? current.filter(id => id !== stat.id) : [...current, stat.id])} aria-label={`Selecionar ${stat.title} para o podium`} /></td>
+                      <td className="p-4"><input type="checkbox" checked={podiumSelection.includes(stat.id)} disabled={podiumSelection.length >= 3 && !podiumSelection.includes(stat.id)} onClick={event => event.stopPropagation()} onChange={() => setPodiumSelection(current => current.includes(stat.id) ? current.filter(id => id !== stat.id) : current.length < 3 ? [...current, stat.id] : current)} aria-label={`Selecionar ${stat.title} para o podium`} /></td>
                       <td className="p-4 font-bold text-slate-400">
                         {idx === 0 && stat.evalCount > 0 ? (
                           <span className="flex items-center text-amber-500"><Award className="w-6 h-6 mr-1 fill-amber-100" /> 1º</span>
