@@ -423,7 +423,9 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
     return [...groups.entries()].map(([normalizedId, workGroup]) => {
       const work = workGroup[0];
       const workIds = new Set(workGroup.map(item => item.id));
-      const workEvals = work.evaluationStatus === 'not-evaluated' ? [] : evaluations.filter(e => workIds.has(e.posterId));
+      const workEvals = workGroup.some(item => item.evaluationStatus !== 'not-evaluated')
+        ? evaluations.filter(e => workIds.has(e.posterId))
+        : [];
       const evalCount = workEvals.length;
       
       let totalScore = 0;
@@ -478,13 +480,13 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   }), [posterStats, resultsSearch, resultsEvaluationFilter]);
 
   const resultStatusCounts = useMemo(() => {
-    const groups = new Map<string, Poster>();
+    const groups = new Map<string, Poster[]>();
     localWorks.filter(work => resultsTypeFilter === 'ALL' || work.type === resultsTypeFilter).forEach(work => {
-      groups.set(normalizePosterCode(work.posterId), work);
+      groups.set(normalizePosterCode(work.posterId), [...(groups.get(normalizePosterCode(work.posterId)) || []), work]);
     });
     let evaluated = 0;
-    groups.forEach(work => {
-      if (isWorkEvaluated(work)) evaluated += 1;
+    groups.forEach(workGroup => {
+      if (workGroup.some(work => isWorkEvaluated(work))) evaluated += 1;
     });
     return { total: groups.size, evaluated, pending: groups.size - evaluated };
   }, [localWorks, evaluations, resultsTypeFilter]);
@@ -992,7 +994,19 @@ return (
                           `#${idx + 1}`
                         )}
                       </td>
-                      <td className="p-4 text-sm font-mono font-bold text-slate-600">{stat.posterId}{stat.allIds.length > 1 && <div className="text-[10px] text-amber-600">Também: {stat.allIds.filter(id => id !== stat.posterId).join(', ')}</div>}</td>
+                      <td className="p-4 text-sm font-mono font-bold text-slate-600">
+                        <div>{stat.posterId}</div>
+                        {stat.allIds.length > 1 && (
+                          <div className="mt-1 space-y-1">
+                            <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-sans font-bold text-amber-800">
+                              Vinculado a {stat.allIds.length - 1} outro ID{stat.allIds.length > 2 ? 's' : ''}
+                            </span>
+                            <div className="text-[10px] font-sans font-semibold text-amber-700">
+                              IDs: {stat.allIds.join(', ')} · resultados combinados
+                            </div>
+                          </div>
+                        )}
+                      </td>
                       <td className="p-4">
                         <div className="text-xs font-bold uppercase text-slate-900">{stat.type === 'oral' ? 'Oral' : 'Pôster'}</div>
                         <div className="text-xs text-slate-500 font-medium">{stat.tematica}</div>
