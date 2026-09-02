@@ -42,6 +42,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const [resultsTypeFilter, setResultsTypeFilter] = useState<'ALL' | 'oral' | 'poster'>('ALL');
   const [resultsSort, setResultsSort] = useState<'score' | 'poster' | 'id'>('score');
   const [resultsSearch, setResultsSearch] = useState('');
+  const [resultsEvaluationFilter, setResultsEvaluationFilter] = useState<'ALL' | 'EVALUATED' | 'PENDING'>('ALL');
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   const [newWorkId, setNewWorkId] = useState('');
@@ -467,9 +468,11 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   }, [localWorks, evaluations, localCriteria, localEvaluators, resultsTypeFilter, resultsTematicaFilter, resultsSort]);
 
   const visiblePosterStats = useMemo(() => posterStats.filter(stat => {
+    if (resultsEvaluationFilter === 'EVALUATED' && stat.evalCount === 0) return false;
+    if (resultsEvaluationFilter === 'PENDING' && stat.evalCount > 0) return false;
     const q = resultsSearch.trim().toLowerCase();
     return !q || stat.allIds.some(id => id.toLowerCase().includes(q)) || stat.title.toLowerCase().includes(q) || stat.presenterName.toLowerCase().includes(q);
-  }), [posterStats, resultsSearch]);
+  }), [posterStats, resultsSearch, resultsEvaluationFilter]);
 
   const selectedPodiumWorks = visiblePosterStats.filter(stat => podiumSelection.includes(stat.id));
 
@@ -884,6 +887,15 @@ return (
                   <button onClick={() => setResultsTypeFilter('ALL')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${resultsTypeFilter === 'ALL' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Todos</button>
                   <button onClick={() => setResultsTypeFilter('oral')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${resultsTypeFilter === 'oral' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Comunicação Oral</button>
                   <button onClick={() => setResultsTypeFilter('poster')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${resultsTypeFilter === 'poster' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Pôsteres</button>
+                </div>
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Status da avaliação</label>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => setResultsEvaluationFilter('ALL')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${resultsEvaluationFilter === 'ALL' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Todos ({posterStats.length})</button>
+                  <button onClick={() => setResultsEvaluationFilter('EVALUATED')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${resultsEvaluationFilter === 'EVALUATED' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Avaliados ({posterStats.filter(stat => stat.evalCount > 0).length})</button>
+                  <button onClick={() => setResultsEvaluationFilter('PENDING')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${resultsEvaluationFilter === 'PENDING' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Não avaliados ({posterStats.filter(stat => stat.evalCount === 0).length})</button>
                 </div>
               </div>
               
