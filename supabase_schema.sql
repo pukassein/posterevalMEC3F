@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS public."Eval_posters" (
     "presentationTime" TEXT,
     "presentationDate" TEXT,
     "tematica" TEXT,
+    "evaluationStatus" TEXT DEFAULT 'evaluated',
     "created_at" TIMESTAMPTZ DEFAULT NOW()
 );
 

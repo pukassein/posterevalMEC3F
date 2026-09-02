@@ -19,6 +19,8 @@ export interface Poster {
   presentationTime?: string;
   presentationDate?: string;
   tematica?: Tematica;
+  /** Set to not-evaluated when the presenter did not attend. */
+  evaluationStatus?: 'evaluated' | 'not-evaluated';
 }
 
 export interface Criterion {

@@ -73,6 +73,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const [editWorkTematica, setEditWorkTematica] = useState<Tematica>('SMA');
   const [editWorkDate, setEditWorkDate] = useState('');
   const [editWorkTime, setEditWorkTime] = useState('');
+  const [editWorkEvaluationStatus, setEditWorkEvaluationStatus] = useState<Poster['evaluationStatus']>('evaluated');
 
   useEffect(() => {
     onSavePosters(localWorks);
@@ -135,6 +136,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
     setEditWorkTematica(work.tematica || 'SMA');
     setEditWorkDate(work.presentationDate || '');
     setEditWorkTime(work.presentationTime || '');
+    setEditWorkEvaluationStatus(work.evaluationStatus || 'evaluated');
   };
 
   const handleSaveWork = (id: string) => {
@@ -146,7 +148,8 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
       posterId: editWorkCode.trim().toUpperCase(),
       tematica: editWorkTematica,
       presentationDate: work.type === 'oral' ? editWorkDate : undefined,
-      presentationTime: editWorkTime.trim()
+      presentationTime: editWorkTime.trim(),
+      evaluationStatus: editWorkEvaluationStatus
     } : work));
     setEditingWorkId(null);
   };
@@ -402,7 +405,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   };
 
   const isWorkEvaluated = (work: Poster) =>
-    evaluations.some(evaluation => evaluation.posterId === work.id);
+    work.evaluationStatus !== 'not-evaluated' && evaluations.some(evaluation => evaluation.posterId === work.id);
 
   const posterStats = useMemo(() => {
     let filteredWorks = localWorks;
@@ -420,7 +423,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
     return [...groups.entries()].map(([normalizedId, workGroup]) => {
       const work = workGroup[0];
       const workIds = new Set(workGroup.map(item => item.id));
-      const workEvals = evaluations.filter(e => workIds.has(e.posterId));
+      const workEvals = work.evaluationStatus === 'not-evaluated' ? [] : evaluations.filter(e => workIds.has(e.posterId));
       const evalCount = workEvals.length;
       
       let totalScore = 0;
@@ -473,6 +476,18 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
     const q = resultsSearch.trim().toLowerCase();
     return !q || stat.allIds.some(id => id.toLowerCase().includes(q)) || stat.title.toLowerCase().includes(q) || stat.presenterName.toLowerCase().includes(q);
   }), [posterStats, resultsSearch, resultsEvaluationFilter]);
+
+  const resultStatusCounts = useMemo(() => {
+    const groups = new Map<string, Poster>();
+    localWorks.filter(work => resultsTypeFilter === 'ALL' || work.type === resultsTypeFilter).forEach(work => {
+      groups.set(normalizePosterCode(work.posterId), work);
+    });
+    let evaluated = 0;
+    groups.forEach(work => {
+      if (isWorkEvaluated(work)) evaluated += 1;
+    });
+    return { total: groups.size, evaluated, pending: groups.size - evaluated };
+  }, [localWorks, evaluations, resultsTypeFilter]);
 
   const selectedPodiumWorks = visiblePosterStats.filter(stat => podiumSelection.includes(stat.id));
 
@@ -585,6 +600,10 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
               <input value={editWorkPresenter} onChange={(e) => setEditWorkPresenter(e.target.value)} placeholder="Apresentador" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
               <input value={editWorkTime} onChange={(e) => setEditWorkTime(e.target.value)} placeholder="Horário" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
               {work.type === 'oral' && <input value={editWorkDate} onChange={(e) => setEditWorkDate(e.target.value)} placeholder="Data (ex.: 26/08)" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />}
+              <select value={editWorkEvaluationStatus || 'evaluated'} onChange={(e) => setEditWorkEvaluationStatus(e.target.value as Poster['evaluationStatus'])} className="px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                <option value="evaluated">Avaliado</option>
+                <option value="not-evaluated">Não avaliado — não compareceu</option>
+              </select>
             </div>
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setEditingWorkId(null)} className="px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
@@ -893,9 +912,9 @@ return (
               <div className="flex-1">
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Status da avaliação</label>
                 <div className="flex flex-wrap gap-2">
-                  <button onClick={() => setResultsEvaluationFilter('ALL')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${resultsEvaluationFilter === 'ALL' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Todos ({posterStats.length})</button>
-                  <button onClick={() => setResultsEvaluationFilter('EVALUATED')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${resultsEvaluationFilter === 'EVALUATED' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Avaliados ({posterStats.filter(stat => stat.evalCount > 0).length})</button>
-                  <button onClick={() => setResultsEvaluationFilter('PENDING')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${resultsEvaluationFilter === 'PENDING' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Não avaliados ({posterStats.filter(stat => stat.evalCount === 0).length})</button>
+                  <button onClick={() => setResultsEvaluationFilter('ALL')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${resultsEvaluationFilter === 'ALL' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Todos ({resultStatusCounts.total})</button>
+                  <button onClick={() => setResultsEvaluationFilter('EVALUATED')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${resultsEvaluationFilter === 'EVALUATED' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Avaliados ({resultStatusCounts.evaluated})</button>
+                  <button onClick={() => setResultsEvaluationFilter('PENDING')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${resultsEvaluationFilter === 'PENDING' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Não avaliados ({resultStatusCounts.pending})</button>
                 </div>
               </div>
               
@@ -928,7 +947,7 @@ return (
                     <ChevronDown className="w-4 h-4" />
                   </button>
                   {exportMenuOpen && (
-                    <div className="absolute right-0 top-11 z-20 w-64 p-2 bg-white border border-slate-200 rounded-xl shadow-lg">
+                    <div className="absolute left-0 top-11 z-20 w-72 p-2 bg-white border border-slate-200 rounded-xl shadow-lg">
                       <p className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500">Escolha o arquivo</p>
                       {(Object.keys(TEMATICAS) as Tematica[]).flatMap(t => (['oral', 'poster'] as const).map(type => (
                         <button
