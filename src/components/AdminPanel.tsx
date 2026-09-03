@@ -19,7 +19,7 @@ interface AdminPanelProps {
 }
 
 export function AdminPanel({ posters, assignments, evaluations, criteria, evaluators = [], onSaveAssignments, onSaveCriteria, onSavePosters, onSaveEvaluators, onClearEvaluation, onLogout }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<'results' | 'evaluators' | 'assignments' | 'criteria' | 'oral' | 'posters'>('oral');
+  const [activeTab, setActiveTab] = useState<'results' | 'certificates' | 'evaluators' | 'assignments' | 'criteria' | 'oral' | 'posters'>('oral');
   const [activeTematicaOral, setActiveTematicaOral] = useState<Tematica | 'ALL'>('ALL');
   const [activeTematicaPoster, setActiveTematicaPoster] = useState<Tematica | 'ALL'>('ALL');
   const [localWorks, setLocalWorks] = useState<Poster[]>(posters);
@@ -42,6 +42,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const [resultsTypeFilter, setResultsTypeFilter] = useState<'ALL' | 'oral' | 'poster'>('ALL');
   const [resultsSort, setResultsSort] = useState<'score' | 'poster' | 'id'>('score');
   const [resultsSearch, setResultsSearch] = useState('');
+  const [certificateSearch, setCertificateSearch] = useState('');
   const [resultsEvaluationFilter, setResultsEvaluationFilter] = useState<'ALL' | 'EVALUATED' | 'PENDING'>('ALL');
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
@@ -476,7 +477,11 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
         averageScore,
         maxPossible: normalizedMax,
         evaluatorNames,
-        comments: allWorkEvals.filter(e => e.generalComments?.trim()).map(e => e.generalComments.trim()),
+        // Comments are historical evidence and must remain visible even when
+        // attendance is changed to absent. Do not derive them from evalCount.
+        comments: evaluations
+          .filter(e => belongsToWork(e) && e.generalComments?.trim())
+          .map(e => e.generalComments.trim()),
         normalizedId
       };
     }).sort((a, b) => {
@@ -531,6 +536,28 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const handleExportResults = (type: 'oral' | 'poster', tematica: Tematica) => {
     const rows = posterStats.filter(s => s.type === type && s.tematica === tematica).map(s => ({ ID: s.posterId, 'IDs duplicados': s.allIds.join(', '), Temática: s.tematica, Tipo: type, Título: s.title, Apresentador: s.presenterName, Avaliadores: s.evaluatorNames.join(', '), 'Nº avaliações': s.evalCount, 'Nota média': Number(s.averageScore.toFixed(2)), Comentários: s.comments.join(' | ') }));
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), `${tematica}-${type}`); XLSX.writeFile(wb, `resultados_${tematica}_${type}.xlsx`);
+  };
+
+  const isWorkPresented = (work: Poster) => !isWorkAbsent(work);
+  const certificateWorks = useMemo(() => {
+    const query = certificateSearch.trim().toLowerCase();
+    return localWorks.filter(work => isWorkPresented(work) && (!query ||
+      work.posterId.toLowerCase().includes(query) ||
+      work.presenterName.toLowerCase().includes(query) ||
+      work.title.toLowerCase().includes(query)));
+  }, [localWorks, certificateSearch]);
+
+  const generateCertificate = (work: Poster) => {
+    const certificateWindow = window.open('', '_blank', 'width=1200,height=850');
+    if (!certificateWindow) {
+      alert('Permita pop-ups para gerar o certificado.');
+      return;
+    }
+    const safe = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
+    certificateWindow.document.write(`<!doctype html><html><head><title>Certificado - ${safe(work.presenterName)}</title><style>
+      @page{size:A4 landscape;margin:0}*{box-sizing:border-box}body{margin:0;background:#eee;font-family:Arial,sans-serif;color:#101010}.certificate{width:297mm;height:210mm;background:#fff;position:relative;overflow:hidden;padding:25mm 22mm 18mm;text-align:center}.logo{position:absolute;left:12mm;top:12mm;width:30mm}.logo img{width:23mm;height:23mm;object-fit:contain}.logo span{display:block;font-size:10pt;line-height:1.05;margin-top:2mm}.title{font-family:Georgia,serif;font-size:43pt;letter-spacing:1px;margin:0}.subtitle{color:#d9ca6b;font-size:22pt;letter-spacing:2px;font-weight:300;margin:7mm 0 8mm}.subtitle:before,.subtitle:after{content:'';display:inline-block;width:35mm;height:2mm;background:#d9ca6b;vertical-align:middle;margin:0 5mm;border-radius:4mm}.intro{font-size:17pt;margin-bottom:8mm}.name{font-size:31pt;font-weight:800;margin:0 0 10mm}.rule{height:2mm;background:#dfcf70;border-radius:5mm;margin:0 8mm 8mm}.body{font-size:16pt;line-height:1.45;margin:0 10mm}.work{margin:10mm auto 0;border:1.5px solid #222;border-radius:8mm;padding:7mm 12mm;max-width:190mm;font-size:19pt;min-height:30mm;text-align:left;box-shadow:-4mm 3mm #242124}.footer{position:absolute;right:25mm;bottom:16mm;font-size:14pt;text-align:center}.signature{font-family:cursive;font-size:23pt;border-bottom:1px solid #333;margin-bottom:2mm}.shape{position:absolute;right:-8mm;bottom:0;width:35mm;height:70mm;background:#6ca6c8;clip-path:polygon(55% 0,100% 100%,0 76%);opacity:.85}@media print{body{background:#fff}.certificate{box-shadow:none}}
+    </style></head><body><div class="certificate"><div class="logo"><img src="https://www.mec3f.com/logomec3f.png"/><span>MEC3F<br/>2026</span></div><h1 class="title">CERTIFICADO</h1><div class="subtitle">DE APRESENTAÇÃO</div><div class="intro">Certificamos que</div><div class="name">${safe(work.presenterName)}</div><div class="rule"></div><p class="body">participou como apresentador(a) do <b>6º Congresso de Engenharias e Ciências Aplicadas das Três Fronteiras (MEC3F)</b>, realizado em Foz do Iguaçu, Paraná, Brasil, de 25 a 28 de agosto de 2026, apresentando o trabalho:</p><div class="work">${safe(work.title)}</div><div class="footer"><div class="signature">MEC3F</div>Coordenação Geral</div><div class="shape"></div></div><script>window.onload=function(){window.print()}</script></body></html>`);
+    certificateWindow.document.close();
   };
 
   const renderWorkCardWithAssign = (work: Poster) => {
@@ -855,7 +882,7 @@ return (
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 flex justify-between items-center w-full">
           <div className="flex flex-wrap items-center gap-2 sm:gap-6 pb-1 pt-2 flex-1">
-            <button 
+            <button
               onClick={() => setActiveTab('results')}
               className={`py-3 px-2 border-b-2 text-xs sm:text-sm font-bold whitespace-nowrap flex items-center ${activeTab === 'results' ? 'border-teal-600 text-teal-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
             >
@@ -863,6 +890,13 @@ return (
               Resultados
             </button>
             <button 
+              onClick={() => setActiveTab('certificates')}
+              className={`py-3 px-2 border-b-2 text-xs sm:text-sm font-bold whitespace-nowrap flex items-center ${activeTab === 'certificates' ? 'border-teal-600 text-teal-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+            >
+              <Award className="w-4 h-4 mr-1 sm:mr-2" />
+              Certificados
+            </button>
+            <button
               onClick={() => setActiveTab('evaluators')}
               className={`py-3 px-2 border-b-2 text-xs sm:text-sm font-bold whitespace-nowrap flex items-center ${activeTab === 'evaluators' ? 'border-teal-600 text-teal-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
             >
@@ -908,6 +942,19 @@ return (
       </header>
       
       <main className="flex-1 overflow-y-auto max-w-5xl mx-auto w-full p-4 pb-12 space-y-6 mt-4">
+
+        {activeTab === 'certificates' && (
+          <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100">
+              <div><h2 className="text-xl font-bold text-slate-900">Gerar certificados</h2><p className="text-sm text-slate-500 mt-1">Somente trabalhos marcados como Apresentado podem receber certificado.</p></div>
+              <input value={certificateSearch} onChange={event => setCertificateSearch(event.target.value)} placeholder="Buscar por ID, nome ou título" className="border rounded-lg px-3 py-2 text-sm w-full sm:w-80" />
+            </div>
+            <div className="space-y-3">
+              {certificateWorks.map(work => <div key={work.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-200 p-4"><div><div className="text-xs font-mono font-bold text-slate-500">{work.posterId} · {work.type === 'oral' ? 'Comunicação Oral' : 'Pôster'}</div><div className="font-bold text-slate-900 mt-1">{work.title}</div><div className="text-sm text-slate-500">{work.presenterName}</div></div><button onClick={() => generateCertificate(work)} className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-bold hover:bg-teal-700"><Award className="w-4 h-4" />Gerar certificado</button></div>)}
+              {certificateWorks.length === 0 && <p className="py-8 text-center text-sm text-slate-500">Nenhum trabalho apresentado encontrado.</p>}
+            </div>
+          </section>
+        )}
         
         {/* TAB: RESULTS */}
         {activeTab === 'results' && (
