@@ -408,6 +408,14 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const isWorkAbsent = (work: Poster) => work.evaluationStatus === 'absent' || work.evaluationStatus === 'not-evaluated';
   const isWorkEvaluated = (work: Poster) => !isWorkAbsent(work) && evaluations.some(evaluation => evaluation.posterId === work.id);
 
+  // Some older ENS evaluations were saved with a decorated poster code
+  // instead of the current UUID (for example ENS-024/ENS024). Use the stable
+  // area + number identity as a legacy fallback when reconnecting comments.
+  const posterIdentity = (value: string) => {
+    const match = String(value || '').toUpperCase().match(/([A-Z]+)[^0-9]*0*(\d+)/);
+    return match ? `${match[1]}${Number(match[2])}` : normalizePosterCode(value);
+  };
+
   const toggleAttendance = (statId: string, status: 'presented' | 'absent') => {
     const target = localWorks.find(work => work.id === statId);
     if (!target) return;
@@ -433,16 +441,16 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
     return [...groups.entries()].map(([normalizedId, workGroup]) => {
       const work = workGroup[0];
       const workIds = new Set(workGroup.map(item => item.id));
-      const workCodes = new Set(workGroup.map(item => normalizePosterCode(item.posterId)));
+      const workCodes = new Set(workGroup.map(item => posterIdentity(item.posterId)));
       const belongsToWork = (evaluation: Evaluation) =>
-        workIds.has(evaluation.posterId) || workCodes.has(normalizePosterCode(evaluation.posterId));
+        workIds.has(evaluation.posterId) || workCodes.has(posterIdentity(evaluation.posterId));
       // Keep all evaluations available for comments, even after attendance is
       // changed to absent. Only evaluations belonging to presented works count
       // toward the score/ranking.
       const allWorkEvals = evaluations.filter(belongsToWork);
       const workEvals = workGroup.some(item => !isWorkAbsent(item))
         ? allWorkEvals.filter(e => workGroup.some(item => !isWorkAbsent(item) &&
-            (item.id === e.posterId || normalizePosterCode(item.posterId) === normalizePosterCode(e.posterId))))
+            (item.id === e.posterId || posterIdentity(item.posterId) === posterIdentity(e.posterId))))
         : [];
       const evalCount = workEvals.length;
       
