@@ -73,7 +73,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
   const [editWorkTematica, setEditWorkTematica] = useState<Tematica>('SMA');
   const [editWorkDate, setEditWorkDate] = useState('');
   const [editWorkTime, setEditWorkTime] = useState('');
-  const [editWorkEvaluationStatus, setEditWorkEvaluationStatus] = useState<Poster['evaluationStatus']>('evaluated');
+  const [editWorkEvaluationStatus, setEditWorkEvaluationStatus] = useState<Poster['evaluationStatus']>('presented');
 
   useEffect(() => {
     onSavePosters(localWorks);
@@ -136,7 +136,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
     setEditWorkTematica(work.tematica || 'SMA');
     setEditWorkDate(work.presentationDate || '');
     setEditWorkTime(work.presentationTime || '');
-    setEditWorkEvaluationStatus(work.evaluationStatus || 'evaluated');
+    setEditWorkEvaluationStatus(work.evaluationStatus === 'absent' || work.evaluationStatus === 'not-evaluated' ? 'absent' : 'presented');
   };
 
   const handleSaveWork = (id: string) => {
@@ -149,7 +149,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
       tematica: editWorkTematica,
       presentationDate: work.type === 'oral' ? editWorkDate : undefined,
       presentationTime: editWorkTime.trim(),
-      evaluationStatus: editWorkEvaluationStatus
+      evaluationStatus: editWorkEvaluationStatus === 'absent' ? 'absent' : 'presented'
     } : work));
     setEditingWorkId(null);
   };
@@ -404,8 +404,17 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
            work.presenterName.toLowerCase().includes(lowerQuery);
   };
 
-  const isWorkEvaluated = (work: Poster) =>
-    work.evaluationStatus !== 'not-evaluated' && evaluations.some(evaluation => evaluation.posterId === work.id);
+  const isWorkAbsent = (work: Poster) => work.evaluationStatus === 'absent' || work.evaluationStatus === 'not-evaluated';
+  const isWorkEvaluated = (work: Poster) => !isWorkAbsent(work) && evaluations.some(evaluation => evaluation.posterId === work.id);
+
+  const toggleAttendance = (statId: string, status: 'presented' | 'absent') => {
+    const target = localWorks.find(work => work.id === statId);
+    if (!target) return;
+    const targetCode = normalizePosterCode(target.posterId);
+    setLocalWorks(prev => prev.map(work => normalizePosterCode(work.posterId) === targetCode
+      ? { ...work, evaluationStatus: status }
+      : work));
+  };
 
   const posterStats = useMemo(() => {
     let filteredWorks = localWorks;
@@ -423,7 +432,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
     return [...groups.entries()].map(([normalizedId, workGroup]) => {
       const work = workGroup[0];
       const workIds = new Set(workGroup.map(item => item.id));
-      const workEvals = workGroup.some(item => item.evaluationStatus !== 'not-evaluated')
+      const workEvals = workGroup.some(item => !isWorkAbsent(item))
         ? evaluations.filter(e => workIds.has(e.posterId))
         : [];
       const evalCount = workEvals.length;
@@ -455,6 +464,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
         type: work.type,
         tematica: work.tematica,
         evalCount,
+        absent: workGroup.every(isWorkAbsent),
         averageScore,
         maxPossible: normalizedMax,
         evaluatorNames,
@@ -602,9 +612,9 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
               <input value={editWorkPresenter} onChange={(e) => setEditWorkPresenter(e.target.value)} placeholder="Apresentador" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
               <input value={editWorkTime} onChange={(e) => setEditWorkTime(e.target.value)} placeholder="Horário" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
               {work.type === 'oral' && <input value={editWorkDate} onChange={(e) => setEditWorkDate(e.target.value)} placeholder="Data (ex.: 26/08)" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />}
-              <select value={editWorkEvaluationStatus || 'evaluated'} onChange={(e) => setEditWorkEvaluationStatus(e.target.value as Poster['evaluationStatus'])} className="px-3 py-2 border border-slate-200 rounded-lg text-sm">
-                <option value="evaluated">Avaliado</option>
-                <option value="not-evaluated">Não avaliado — não compareceu</option>
+              <select value={editWorkEvaluationStatus === 'absent' ? 'absent' : 'presented'} onChange={(e) => setEditWorkEvaluationStatus(e.target.value as Poster['evaluationStatus'])} className="px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                <option value="presented">Apresentado</option>
+                <option value="absent">Ausente — não recebe certificado</option>
               </select>
             </div>
             <div className="flex justify-end gap-2">
@@ -1033,7 +1043,17 @@ return (
                       </td>
                       <td className="p-4 text-xs text-slate-600">{stat.comments.length ? stat.comments.map((c, i) => <div key={i} className="italic mb-1">“{c}”</div>) : '—'}</td>
                       <td className="p-4 text-right">
-                        {stat.evalCount > 0 && (
+                        <div className="flex flex-col items-end gap-2">
+                          <select
+                            value={stat.absent ? 'absent' : 'presented'}
+                            onChange={(event) => toggleAttendance(stat.id, event.target.value as 'presented' | 'absent')}
+                            className={`text-xs font-bold rounded-lg border px-2 py-1.5 ${stat.absent ? 'border-red-200 text-red-700 bg-red-50' : 'border-emerald-200 text-emerald-700 bg-emerald-50'}`}
+                            aria-label={`Status de presença de ${stat.posterId}`}
+                          >
+                            <option value="presented">Apresentado</option>
+                            <option value="absent">Ausente</option>
+                          </select>
+                        {stat.evalCount > 0 && !stat.absent && (
                           <div className="relative inline-flex items-center gap-2">
                             {evaluationActionId === stat.id && (
                               <button
@@ -1053,6 +1073,7 @@ return (
                             </button>
                           </div>
                         )}
+                        </div>
                       </td>
                     </tr>
                   ))}
