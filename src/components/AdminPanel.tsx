@@ -432,8 +432,12 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
     return [...groups.entries()].map(([normalizedId, workGroup]) => {
       const work = workGroup[0];
       const workIds = new Set(workGroup.map(item => item.id));
+      // Keep all evaluations available for comments, even after attendance is
+      // changed to absent. Only evaluations belonging to presented works count
+      // toward the score/ranking.
+      const allWorkEvals = evaluations.filter(e => workIds.has(e.posterId));
       const workEvals = workGroup.some(item => !isWorkAbsent(item))
-        ? evaluations.filter(e => workIds.has(e.posterId))
+        ? allWorkEvals.filter(e => workGroup.some(item => !isWorkAbsent(item) && item.id === e.posterId))
         : [];
       const evalCount = workEvals.length;
       
@@ -468,7 +472,7 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
         averageScore,
         maxPossible: normalizedMax,
         evaluatorNames,
-        comments: workEvals.filter(e => e.generalComments?.trim()).map(e => e.generalComments.trim()),
+        comments: allWorkEvals.filter(e => e.generalComments?.trim()).map(e => e.generalComments.trim()),
         normalizedId
       };
     }).sort((a, b) => {
