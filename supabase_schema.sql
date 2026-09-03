@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS public."Eval_evaluators" (
 
 -- Safe upgrades for databases created before these fields were added
 ALTER TABLE public."Eval_posters" ADD COLUMN IF NOT EXISTS "presentationDate" TEXT;
+ALTER TABLE public."Eval_posters" ADD COLUMN IF NOT EXISTS "authors" TEXT;
 ALTER TABLE public."Eval_evaluators" ADD COLUMN IF NOT EXISTS "areas" TEXT[] DEFAULT '{}';
 
 -- Enable Row Level Security

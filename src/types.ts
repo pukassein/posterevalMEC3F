@@ -14,6 +14,7 @@ export interface Poster {
   posterId: string;
   title: string;
   presenterName: string;
+  authors?: string;
   type: WorkType;
   abstract?: string;
   presentationTime?: string;
