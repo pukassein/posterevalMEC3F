@@ -432,12 +432,16 @@ export function AdminPanel({ posters, assignments, evaluations, criteria, evalua
     return [...groups.entries()].map(([normalizedId, workGroup]) => {
       const work = workGroup[0];
       const workIds = new Set(workGroup.map(item => item.id));
+      const workCodes = new Set(workGroup.map(item => normalizePosterCode(item.posterId)));
+      const belongsToWork = (evaluation: Evaluation) =>
+        workIds.has(evaluation.posterId) || workCodes.has(normalizePosterCode(evaluation.posterId));
       // Keep all evaluations available for comments, even after attendance is
       // changed to absent. Only evaluations belonging to presented works count
       // toward the score/ranking.
-      const allWorkEvals = evaluations.filter(e => workIds.has(e.posterId));
+      const allWorkEvals = evaluations.filter(belongsToWork);
       const workEvals = workGroup.some(item => !isWorkAbsent(item))
-        ? allWorkEvals.filter(e => workGroup.some(item => !isWorkAbsent(item) && item.id === e.posterId))
+        ? allWorkEvals.filter(e => workGroup.some(item => !isWorkAbsent(item) &&
+            (item.id === e.posterId || normalizePosterCode(item.posterId) === normalizePosterCode(e.posterId))))
         : [];
       const evalCount = workEvals.length;
       
